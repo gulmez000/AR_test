@@ -1,6 +1,9 @@
 <!doctype html>
-
-
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modern Radyo Dinle</title>
   <style>
     body {
       font-family: sans-serif;
@@ -8,11 +11,13 @@
       background: #f0f0f0;
       padding: 1rem;
       margin: 0;
+      transition: background-color 0.3s ease; /* Tema geçişi için eklendi */
     }
 
     h1 {
       font-size: 1.8rem;
       margin-bottom: 1rem;
+      color: #333; /* Başlık rengi eklendi */
     }
 
     .radio-list {
@@ -48,6 +53,7 @@
     .radio p {
       font-size: 14px;
       margin: 0.5rem 0 0;
+      color: #555; /* Radyo adı rengi eklendi */
     }
 
     .favorite {
@@ -94,6 +100,7 @@
       color: white;
       cursor: pointer;
       font-size: 14px;
+      transition: background-color 0.2s ease;
     }
 
     button.active {
@@ -111,19 +118,25 @@
         left: 2px;
       }
     }
-	.centered-top-container.sticky {
-  position: static !important;
-  top: auto !important;
-  z-index: 1 !important;
-  box-shadow: none !important;
-  background: none !important;
-}
 
+    #equalizer {
+      width: 50px;
+      height: 20px;
+      background-color: #f44336;
+      margin: 10px auto;
+      border-radius: 5px;
+      opacity: 0.7;
+      transition: transform 0.1s ease-in-out, opacity 0.1s ease-in-out;
+    }
+
+    .playing #equalizer {
+      transform: scaleY(1.5);
+      opacity: 1;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-
-
+</head>
+<body>
   <h1></h1>
 
   <div id="filterButtons">
@@ -133,32 +146,32 @@
 
   <div class="radio-list" id="radioList"></div>
   <audio id="player" controls></audio>
-  <div id="status">Bir radyo seçin</div>
+  <div id="equalizer"></div> <div id="status">Bir radyo seçin</div>
 
   <script>
-   const radios = [
-  { name: "Radyo Fenomen", stream: "https://live.radyofenomen.com/fenomen/128/icecast.audio", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-fenomen.jpg" },
-  { name: "Joy FM", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOY_FM128AAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-fm.jpg" },
-  { name: "Joy Türk", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOY_TURK128AAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-turk-dinle.jpg" },
-  { name: "Radyo Viva", stream: "https://radyoviva.radyotvonline.net/radyovivaaac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-viva.jpg" },
-  { name: "Alem FM", stream: "https://alemfm.radyotvonline.net/alemfmaac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/alem-fm.jpg" },
-  { name: "Kral FM", stream: "https://dygedge2.radyotvonline.net/kralfm/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/kral-fm-dinle.jpg" },
-  { name: "Power Türk FM", stream: "https://live.powerapp.com.tr/powerturk/abr/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/power-turk-dinle.png" },
-  { name: "Slow Türk", stream: "https://radyo.duhnet.tv/slowturk", logo: "https://www.canliradyodinle.fm/wp-content/uploads/slow-turk-dinle.jpg" },
-  { name: "Metro FM", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/METRO_FMAAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/metro-fm.jpg" },
-  { name: "Radyo D", stream: "https://moondigitaledge2.radyotvonline.net/radyod/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-d-dinle.png" },
-  { name: "JoyTürk Akustik", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOYTURK_AKUSTIK128AAC.aac?/;stream.mp3", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-turk-akustik.jpg" },
- { name: "Kafa Radyo", stream: "https://moondigitaledge2.radyotvonline.net/kafaradyo/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/kafa-radyo.jpg" },
-{name:"Super FM",stream:"https://playerservices.streamtheworld.com/api/livestream-redirect/SUPER_FM128AAC.aac?/;stream.mp3", logo:"https://www.canliradyodinle.fm/wp-content/uploads/super-fm-dinle.jpg"},
-{name:"RadyoSpor",stream:"https://moondigitaledge.radyotvonline.net/radyospor/playlist.m3u8", logo:"https://www.canliradyodinle.fm/wp-content/uploads/radyo-spor.jpg"}
-];
-
+    const radios = [
+      { name: "Radyo Fenomen", stream: "https://live.radyofenomen.com/fenomen/128/icecast.audio", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-fenomen.jpg" },
+      { name: "Joy FM", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOY_FM128AAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-fm.jpg" },
+      { name: "Joy Türk", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOY_TURK128AAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-turk-dinle.jpg" },
+      { name: "Radyo Viva", stream: "https://radyoviva.radyotvonline.net/radyovivaaac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-viva.jpg" },
+      { name: "Alem FM", stream: "https://alemfm.radyotvonline.net/alemfmaac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/alem-fm.jpg" },
+      { name: "Kral FM", stream: "https://dygedge2.radyotvonline.net/kralfm/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/kral-fm-dinle.jpg" },
+      { name: "Power Türk FM", stream: "https://live.powerapp.com.tr/powerturk/abr/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/power-turk-dinle.png" },
+      { name: "Slow Türk", stream: "https://radyo.duhnet.tv/slowturk", logo: "https://www.canliradyodinle.fm/wp-content/uploads/slow-turk-dinle.jpg" },
+      { name: "Metro FM", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/METRO_FMAAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/metro-fm.jpg" },
+      { name: "Radyo D", stream: "https://moondigitaledge2.radyotvonline.net/radyod/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-d-dinle.png" },
+      { name: "JoyTürk Akustik", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOYTURK_AKUSTIK128AAC.aac?/;stream.mp3", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-turk-akustik.jpg" },
+      { name: "Kafa Radyo", stream: "https://moondigitaledge2.radyotvonline.net/kafaradyo/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/kafa-radyo.jpg" },
+      { name: "Super FM", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/SUPER_FM128AAC.aac?/;stream.mp3", logo: "https://www.canliradyodinle.fm/wp-content/uploads/super-fm-dinle.jpg" },
+      { name: "RadyoSpor", stream: "https://moondigitaledge.radyotvonline.net/radyospor/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-spor.jpg" }
+    ];
 
     const radioList = document.getElementById("radioList");
     const player = document.getElementById("player");
     const status = document.getElementById("status");
     const showAllBtn = document.getElementById("showAll");
     const showFavBtn = document.getElementById("showFavorites");
+    const body = document.body; // Body elementini al
 
     let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
     let showFavoritesOnly = false;
@@ -184,8 +197,9 @@
         };
 
         div.onclick = () => {
-          localStorage.setItem("lastPlayedRadio", JSON.stringify(radio)); // 🔴 Kaydet
+          localStorage.setItem("lastPlayedRadio", JSON.stringify(radio));
           status.textContent = `${radio.name} - Bağlanıyor...`;
+          body.classList.remove('playing'); // Yeni radyo seçildiğinde animasyonu sıfırla
 
           if (window.hls) {
             window.hls.destroy();
@@ -200,19 +214,24 @@
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
               player.play().then(() => {
                 status.textContent = `Şu an çalan: ${radio.name}`;
+                body.classList.add('playing'); // Çalma başladığında animasyonu başlat
               }).catch(() => {
                 status.textContent = `${radio.name} - Oynatma hatası!`;
+                body.classList.remove('playing');
               });
             });
             hls.on(Hls.Events.ERROR, () => {
               status.textContent = `${radio.name} - Bağlantı hatası!`;
+              body.classList.remove('playing');
             });
           } else {
             player.src = radio.stream;
             player.play().then(() => {
               status.textContent = `Şu an çalan: ${radio.name}`;
+              body.classList.add('playing'); // Çalma başladığında animasyonu başlat
             }).catch(() => {
               status.textContent = `${radio.name} - Bağlantı hatası!`;
+              body.classList.remove('playing');
             });
           }
         };
@@ -247,7 +266,18 @@
 
     updateRadioList();
 
-    // 🔁 Sayfa yüklendiğinde son dinlenen radyoyu çal
+    player.addEventListener('play', () => {
+      body.classList.add('playing');
+    });
+
+    player.addEventListener('pause', () => {
+      body.classList.remove('playing');
+    });
+
+    player.addEventListener('ended', () => {
+      body.classList.remove('playing');
+    });
+
     const lastPlayed = JSON.parse(localStorage.getItem("lastPlayedRadio"));
     if (lastPlayed) {
       const radio = radios.find(r => r.name === lastPlayed.name);
@@ -261,21 +291,25 @@
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
               player.play().then(() => {
                 status.textContent = `Şu an çalan: ${radio.name}`;
+                body.classList.add('playing');
               }).catch(() => {
                 status.textContent = `${radio.name} - Oynatma hatası!`;
+                body.classList.remove('playing');
               });
             });
           } else {
             player.src = radio.stream;
             player.play().then(() => {
               status.textContent = `Şu an çalan: ${radio.name}`;
+              body.classList.add('playing');
             }).catch(() => {
               status.textContent = `${radio.name} - Bağlantı hatası!`;
+              body.classList.remove('playing');
             });
           }
         }, 500); // Yüklenmesini bekle
       }
     }
   </script>
-
-</!doctype>
+</body>
+</html>
