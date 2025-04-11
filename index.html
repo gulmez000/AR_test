@@ -462,7 +462,7 @@
             if (!isImagePlaced || !imagePlane) return;
 
             // Ekrandaki dokunma noktasını normalize edilmiş koordinatlara dönüştür
-            const             const rect = renderer.domElement.getBoundingClientRect();
+            const rect = renderer.domElement.getBoundingClientRect();
             const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
