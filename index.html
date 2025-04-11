@@ -79,6 +79,7 @@
     #current-radio-info {
       text-align: center;
       margin-top: 0.5rem;
+      margin-bottom: 0.5rem; /* Ekolayzır için boşluk */
     }
 
     #current-radio-logo {
@@ -97,6 +98,30 @@
     #current-radio-status {
       font-size: 0.9rem;
       color: #bbb;
+    }
+
+    #play-stop-button {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 0.7rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.2s ease;
+      margin-top: 0.5rem;
+    }
+
+    #play-stop-button:hover {
+      background: #d32f2f;
+    }
+
+    .playing #play-stop-button {
+      background: #555;
+    }
+
+    .playing #play-stop-button:hover {
+      background: #777;
     }
 
     #search-container {
@@ -350,6 +375,7 @@
       <div class="eq-bar"></div>
       <div class="eq-bar"></div>
     </div>
+    <button id="play-stop-button">Durdur</button>
   </div>
 
   <div id="filterButtons">
@@ -363,8 +389,7 @@
   </div>
 
   <div class="radio-list" id="radioList"></div>
-  <audio id="player" controls></audio>
-  <div id="status">Bir radyo seçin</div>
+  <audio id="player" controls style="display: none;"></audio> <div id="status">Bir radyo seçin</div>
 
   <script>
     const radios = [
@@ -398,15 +423,26 @@
     const searchButton = document.getElementById("search-button");
     const equalizerContainer = document.getElementById("equalizer-container");
     const volumeSlider = document.getElementById("volume-slider");
+    const playStopButton = document.getElementById("play-stop-button");
 
     let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
     let showFavoritesOnly = false;
     let currentRadio = null;
+    let isPlaying = false;
+
+    function updatePlayStopButtonText() {
+      playStopButton.textContent = isPlaying ? "Durdur" : "Çal";
+      if (isPlaying) {
+        playStopButton.classList.add('playing');
+      } else {
+        playStopButton.classList.remove('playing');
+      }
+    }
 
     function updateRadioList(filterText = "") {
       radioList.innerHTML = "";
       const filteredRadios = radios.filter(radio => {
-                const matchesFilter = radio.name.toLowerCase().includes(filterText.toLowerCase());
+        const matchesFilter = radio.name.toLowerCase().includes(filterText.toLowerCase());
         const isFavorite = favorites.includes(radio.name);
         return showFavoritesOnly ? isFavorite && matchesFilter : matchesFilter;
       });
@@ -435,6 +471,15 @@
     }
 
     function playRadio(radio) {
+      if (currentRadio && currentRadio.name === radio.name && isPlaying) {
+        player.pause();
+        isPlaying = false;
+        updatePlayStopButtonText();
+        currentRadioStatus.textContent = "Duraklatıldı";
+        body.classList.remove('playing');
+        return;
+      }
+
       currentRadio = radio;
       localStorage.setItem("lastPlayedRadio", JSON.stringify(radio));
       statusDisplay.textContent = `${radio.name} - Bağlanıyor...`;
@@ -443,6 +488,8 @@
       currentRadioContainer.style.display = "flex";
       currentRadioStatus.textContent = "Yükleniyor...";
       body.classList.add('playing');
+      isPlaying = true;
+      updatePlayStopButtonText();
 
       if (window.hls) {
         window.hls.destroy();
@@ -462,12 +509,16 @@
             statusDisplay.textContent = `${radio.name} - Oynatma hatası!`;
             currentRadioStatus.textContent = "Oynatma hatası!";
             body.classList.remove('playing');
+            isPlaying = false;
+            updatePlayStopButtonText();
           });
         });
         hls.on(Hls.Events.ERROR, () => {
           statusDisplay.textContent = `${radio.name} - Bağlantı hatası!`;
           currentRadioStatus.textContent = "Bağlantı hatası!";
           body.classList.remove('playing');
+          isPlaying = false;
+          updatePlayStopButtonText();
         });
       } else {
         player.src = radio.stream;
@@ -478,6 +529,8 @@
           statusDisplay.textContent = `${radio.name} - Bağlantı hatası!`;
           currentRadioStatus.textContent = "Bağlantı hatası!";
           body.classList.remove('playing');
+          isPlaying = false;
+          updatePlayStopButtonText();
         });
       }
     }
@@ -518,33 +571,41 @@
       player.volume = volumeSlider.value;
     });
 
+    playStopButton.addEventListener('click', () => {
+      if (currentRadio) {
+        if (isPlaying) {
+          player.pause();
+          isPlaying = false;
+          currentRadioStatus.textContent = "Duraklatıldı";
+          body.classList.remove('playing');
+        } else {
+          player.play().then(() => {
+            isPlaying = true;
+            currentRadioStatus.textContent = "Çalınıyor";
+            body.classList.add('playing');
+          }).catch(() => {
+            statusDisplay.textContent = `${currentRadio.name} - Oynatma hatası!`;
+            currentRadioStatus.textContent = "Oynatma hatası!";
+            body.classList.remove('playing');
+            isPlaying = false;
+          });
+        }
+        updatePlayStopButtonText();
+      } else {
+        statusDisplay.textContent = "Lütfen önce bir radyo seçin.";
+      }
+    });
+
     updateRadioList(); // Sayfa ilk yüklendiğinde listeyi göster
-
-    player.addEventListener('play', () => {
-      body.classList.add('playing');
-      if (currentRadio) {
-        currentRadioStatus.textContent = "Çalınıyor";
-      }
-    });
-
-    player.addEventListener('pause', () => {
-      body.classList.remove('playing');
-      if (currentRadio) {
-        currentRadioStatus.textContent = "Duraklatıldı";
-      }
-    });
-
-    player.addEventListener('ended', () => {
-      body.classList.remove('playing');
-      if (currentRadio) {
-        currentRadioStatus.textContent = "Bitti";
-      }
-    });
+    updatePlayStopButtonText(); // Başlangıç buton metnini ayarla
 
     const lastPlayed = JSON.parse(localStorage.getItem("lastPlayedRadio"));
     if (lastPlayed) {
-      playRadio(lastPlayed);
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // Son çalınanı açınca da üste kaydır
+      const radioToPlay = radios.find(r => r.name === lastPlayed.name);
+      if (radioToPlay) {
+        playRadio(radioToPlay);
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Son çalınanı açınca da üste kaydır
+      }
     }
   </script>
 </body>
