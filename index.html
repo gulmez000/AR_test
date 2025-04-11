@@ -10,7 +10,7 @@
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
-        
+
         #ui-container {
             position: fixed;
             bottom: 20px;
@@ -19,7 +19,7 @@
             justify-content: center;
             z-index: 10;
         }
-        
+
         .button-container {
             background-color: rgba(0, 0, 0, 0.5);
             padding: 10px;
@@ -27,7 +27,7 @@
             display: flex;
             gap: 10px;
         }
-        
+
         button {
             padding: 12px 20px;
             border: none;
@@ -37,15 +37,15 @@
             font-weight: bold;
             cursor: pointer;
         }
-        
+
         button:disabled {
             background-color: #cccccc;
         }
-        
+
         #image-input {
             display: none;
         }
-        
+
         #instructions {
             position: fixed;
             top: 20px;
@@ -59,7 +59,7 @@
             text-align: center;
             max-width: 80%;
         }
-        
+
         #loading-screen {
             position: fixed;
             top: 0;
@@ -74,7 +74,7 @@
             align-items: center;
             z-index: 100;
         }
-        
+
         .loader {
             border: 5px solid #f3f3f3;
             border-top: 5px solid #3498db;
@@ -84,12 +84,12 @@
             animation: spin 1s linear infinite;
             margin-bottom: 20px;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         #contextMenu {
             display: none;
             position: fixed;
@@ -98,14 +98,14 @@
             border-radius: 5px;
             padding: 10px;
         }
-        
+
         #contextMenu button {
             display: block;
             width: 100%;
             margin-bottom: 5px;
             padding: 8px 15px;
         }
-        
+
         #controls {
             display: none;
             position: fixed;
@@ -119,12 +119,12 @@
             color: white;
             text-align: center;
         }
-        
+
         #controls label {
             display: block;
             margin: 5px 0;
         }
-        
+
         #controls input {
             width: 200px;
         }
@@ -136,9 +136,9 @@
         <p>AR özelliklerini yüklüyor...</p>
         <p>Lütfen kamera izinlerini onaylayın</p>
     </div>
-    
+
     <div id="instructions">Bir resim seçmek için "Resim Seç" düğmesine tıklayın, sonra resmi yerleştirmek için bir düzlem belirleyin</div>
-    
+
     <div id="ui-container">
         <div class="button-container">
             <button id="select-image-btn">Resim Seç</button>
@@ -146,17 +146,17 @@
             <button id="adjust-btn" disabled>Boyut/Döndür</button>
         </div>
     </div>
-    
+
     <input type="file" id="image-input" accept="image/*">
-    
+
     <div id="controls">
         <label for="scale-slider">Boyut:</label>
         <input type="range" id="scale-slider" min="10" max="200" value="100">
-        
+
         <label for="rotate-slider">Döndürme:</label>
         <input type="range" id="rotate-slider" min="0" max="360" value="0">
     </div>
-    
+
     <div id="contextMenu">
         <button id="remove-btn">Kaldır</button>
         <button id="lock-btn">Kilitle</button>
@@ -177,7 +177,7 @@
         let isImageLocked = false;
         let currentScale = 1.0;
         let currentRotation = 0;
-        
+
         // UI Elementleri
         const selectImageBtn = document.getElementById('select-image-btn');
         const placeImageBtn = document.getElementById('place-image-btn');
@@ -191,29 +191,29 @@
         const controls = document.getElementById('controls');
         const scaleSlider = document.getElementById('scale-slider');
         const rotateSlider = document.getElementById('rotate-slider');
-        
+
         // Sayfa yüklendiğinde initi başlat
         window.onload = init;
-        
+
         function init() {
             // Scene oluştur
             scene = new THREE.Scene();
-            
+
             // Camera oluştur
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-            
+
             // Light oluştur
             const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
             light.position.set(0, 1, 0);
             scene.add(light);
-            
+
             // Renderer oluştur
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
-            
+
             // XR özelliklerini kontrol et
             if ('xr' in navigator) {
                 navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
@@ -227,7 +227,7 @@
             } else {
                 loadingScreen.innerHTML = 'WebXR desteklenmiyor. Lütfen WebXR destekli bir tarayıcı kullanın.';
             }
-            
+
             // Event Listeners
             window.addEventListener('resize', onWindowResize);
             selectImageBtn.addEventListener('click', () => imageInput.click());
@@ -236,7 +236,7 @@
             adjustBtn.addEventListener('click', toggleControls);
             removeBtn.addEventListener('click', removeImage);
             lockBtn.addEventListener('click', toggleLock);
-            
+
             // Slider event listeners
             scaleSlider.addEventListener('input', (e) => {
                 if (imagePlane && !isImageLocked) {
@@ -244,14 +244,14 @@
                     updateImageTransform();
                 }
             });
-            
+
             rotateSlider.addEventListener('input', (e) => {
                 if (imagePlane && !isImageLocked) {
                     currentRotation = parseFloat(e.target.value) * (Math.PI / 180);
                     updateImageTransform();
                 }
             });
-            
+
             // Context menu için event listener
             document.addEventListener('click', function(event) {
                 // Context menu dışında bir yere tıklandığında gizle
@@ -259,11 +259,11 @@
                     contextMenu.style.display = 'none';
                 }
             });
-            
+
             // Ekrana tıklama olay dinleyicisi
             renderer.domElement.addEventListener('click', onScreenTap);
         }
-        
+
         function setupAR() {
             // AR Butonunu ekle
             const arButton = document.createElement('button');
@@ -281,14 +281,14 @@
             arButton.style.fontWeight = 'bold';
             arButton.style.zIndex = '999';
             document.body.appendChild(arButton);
-            
+
             arButton.addEventListener('click', () => {
                 navigator.xr.requestSession('immersive-ar', {
                     requiredFeatures: ['hit-test', 'dom-overlay'],
                     domOverlay: { root: document.body }
                 }).then(onSessionStarted);
             });
-            
+
             // Retikül (Hedef işareti) oluştur
             reticle = new THREE.Mesh(
                 new THREE.RingGeometry(0.03, 0.04, 32).rotateX(-Math.PI / 2),
@@ -297,43 +297,43 @@
             reticle.matrixAutoUpdate = false;
             reticle.visible = false;
             scene.add(reticle);
-            
+
             // Renderer XR loop
             renderer.setAnimationLoop(render);
         }
-        
+
         function onSessionStarted(session) {
             // AR Butonunu kaldır
             document.getElementById('ar-button').style.display = 'none';
-            
+
             session.addEventListener('end', () => {
                 // AR session sonlandığında
                 document.getElementById('ar-button').style.display = 'block';
             });
-            
+
             renderer.xr.setReferenceSpaceType('local');
             renderer.xr.setSession(session);
-            
+
             // Controller oluştur
             controller = renderer.xr.getController(0);
             controller.addEventListener('select', onSelect);
             scene.add(controller);
-            
+
             // Hit-test için session özelliklerini ayarla
             session.requestReferenceSpace('viewer').then((referenceSpace) => {
                 session.requestHitTestSource({ space: referenceSpace }).then((source) => {
                     hitTestSource = source;
                 });
             });
-            
+
             session.addEventListener('end', () => {
                 hitTestSourceRequested = false;
                 hitTestSource = null;
             });
-            
+
             hitTestSourceRequested = true;
         }
-        
+
         function handleImageSelect(event) {
             const file = event.target.files[0];
             if (file) {
@@ -351,179 +351,163 @@
                 reader.readAsDataURL(file);
             }
         }
-        
+
         function placeImage() {
             if (!selectedImage || !reticle.visible) return;
-            
+
             // Önceki resmi temizle
             if (imagePlane) {
                 scene.remove(imagePlane);
                 imagePlane = null;
             }
-            
+
             // Resim düzlemi oluştur
             const aspectRatio = selectedImage.width / selectedImage.height;
             const width = 1; // 1 metre genişliğinde
             const height = width / aspectRatio;
-            
+
             const geometry = new THREE.PlaneGeometry(width, height);
             const material = new THREE.MeshBasicMaterial({
                 map: imageTexture,
                 transparent: true,
-                opacity: 1.0
+                opacity: 1.0,
+                side: THREE.DoubleSide // Arka yüzeyi de göster
             });
-            
+
             imagePlane = new THREE.Mesh(geometry, material);
-            
-            // Resmi düzlemin üzerine yerleştir (duvar gibi)
+
+            // Resmi düzlemin üzerine yerleştir (zemine paralel)
             const matrix = new THREE.Matrix4().fromArray(reticle.matrix.elements);
             const position = new THREE.Vector3();
             const rotation = new THREE.Quaternion();
             const scale = new THREE.Vector3();
             matrix.decompose(position, rotation, scale);
-            
+
             imagePlane.position.copy(position);
-            
-            // Düzleme dik olacak şekilde döndür (duvar gibi)
-            // reticle'dan gelen rotasyonu kullan ama y ekseninde dik kal
-            const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(rotation);
-            normal.y = 0; // Y düzlemine paralel olacak şekilde sınırla
-            normal.normalize();
-            
-            if (normal.length() === 0) {
-                // Eğer normal vektörü sıfırsa, varsayılan yön kullan
-                imagePlane.lookAt(0, position.y, 0);
-            } else {
-                // Reticle'ın normal vektörüne bak
-                imagePlane.lookAt(position.x + normal.x, position.y, position.z + normal.z);
-            }
-            
-            // Biraz daha yukarı yerleştir (göz hizasına)
-            imagePlane.position.y += 0.5;
-            
+
+            // Düzlemi yatay hale getir
+            imagePlane.rotation.x = -Math.PI / 2;
+
             scene.add(imagePlane);
-            
+
             // UI güncellemeleri
             placeImageBtn.disabled = false;
             adjustBtn.disabled = false;
             reticle.visible = false;
             isImagePlaced = true;
-            
+
             instructionsElement.textContent = 'Resim yerleştirildi. Boyut ve döndürme için "Boyut/Döndür" düğmesine tıklayın';
-            
+
             // Reset sliders
             scaleSlider.value = 100;
             rotateSlider.value = 0;
             currentScale = 1.0;
             currentRotation = 0;
         }
-        
+
         function updateImageTransform() {
             if (!imagePlane) return;
-            
-            // Mevcut pozisyon ve rotasyonu koru, sadece ölçeği güncelle
+
+            // Mevcut pozisyon ve rotasyonu koru, sadece ölçeği ve Y ekseni rotasyonunu güncelle
             imagePlane.scale.set(currentScale, currentScale, currentScale);
-            
-            // Y ekseni etrafında döndür (sadece yatay dönüş)
             imagePlane.rotation.y = currentRotation;
         }
-        
+
         function toggleControls() {
             if (!isImagePlaced || isImageLocked) return;
-            
+
             if (controls.style.display === 'none' || controls.style.display === '') {
                 controls.style.display = 'block';
             } else {
                 controls.style.display = 'none';
             }
         }
-        
+
         function removeImage() {
             if (imagePlane) {
                 scene.remove(imagePlane);
                 imagePlane = null;
                 isImagePlaced = false;
                 isImageLocked = false;
-                
+
                 adjustBtn.disabled = true;
                 controls.style.display = 'none';
                 contextMenu.style.display = 'none';
-                
                 instructionsElement.textContent = 'Resim kaldırıldı. Yeni bir resim yerleştirmek için "Resim Seç" düğmesine tıklayın';
-                
+
                 // Reticle'ı tekrar göster
                 reticle.visible = true;
             }
         }
-        
+
         function toggleLock() {
             isImageLocked = !isImageLocked;
             lockBtn.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
-            
+
             adjustBtn.disabled = isImageLocked;
             controls.style.display = 'none';
             contextMenu.style.display = 'none';
-            
-            instructionsElement.textContent = isImageLocked ? 
-                'Resim kilitlendi. Kilidini açmak için resme tekrar tıklayın' : 
+
+            instructionsElement.textContent = isImageLocked ?
+                'Resim kilitlendi. Kilidini açmak için resme tekrar tıklayın' :
                 'Resim kilidi açıldı. Boyutlandırma için "Boyut/Döndür" düğmesine tıklayın';
         }
-        
+
         function onScreenTap(event) {
             if (!isImagePlaced || !imagePlane) return;
-            
+
             // Ekrandaki dokunma noktasını normalize edilmiş koordinatlara dönüştür
             const rect = renderer.domElement.getBoundingClientRect();
             const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-            
+
             // Raycaster oluştur
             const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
-            
+            raycaster.setFromCamera(new new THREE.Vector2(x, y), camera);
+
             // Resim düzlemi ile kesişme kontrol et
             const intersects = raycaster.intersectObject(imagePlane);
-            
+
             if (intersects.length > 0) {
                 // Resme tıklandı, context menüyü göster
                 contextMenu.style.display = 'block';
                 contextMenu.style.left = `${event.clientX}px`;
                 contextMenu.style.top = `${event.clientY}px`;
-                
+
                 // Context menü butonlarını güncelle
                 lockBtn.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
-                
+
                 // Olay yayılımını durdur
                 event.stopPropagation();
             }
         }
-        
+
         function onSelect() {
             if (reticle.visible) {
                 placeImage();
             }
         }
-        
+
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
-        
+
         function render(timestamp, frame) {
             if (frame) {
                 if (hitTestSourceRequested === false) return;
-                
+
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const session = renderer.xr.getSession();
-                
+
                 if (hitTestSource && !isImagePlaced) {
                     const hitTestResults = frame.getHitTestResults(hitTestSource);
-                    
+
                     if (hitTestResults.length > 0) {
                         const hit = hitTestResults[0];
                         const pose = hit.getPose(referenceSpace);
-                        
+
                         if (pose) {
                             reticle.visible = true;
                             reticle.matrix.fromArray(pose.transform.matrix);
@@ -533,9 +517,10 @@
                     }
                 }
             }
-            
+
             renderer.render(scene, camera);
         }
     </script>
 </body>
 </html>
+
