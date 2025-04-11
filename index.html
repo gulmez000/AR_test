@@ -3,37 +3,27 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Resim Yerleştirici (Basitleştirilmiş)</title>
+    <title>AR Resim Yerleştirici (Debug v2)</title>
     <style>
+        /* Stiller öncekiyle aynı... */
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
         canvas { display: block; }
 
         #ui-container, #manipulation-container, #interaction-container {
-            position: fixed;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            z-index: 10;
-            pointer-events: none;
+            position: fixed; bottom: 20px; width: 100%; display: flex;
+            justify-content: center; z-index: 10; pointer-events: none;
         }
         #manipulation-container { bottom: 90px; }
         #interaction-container { bottom: 160px; }
 
         .button-group {
-            background-color: rgba(0, 0, 0, 0.6);
-            padding: 10px;
-            border-radius: 10px;
-            display: flex;
-            gap: 10px;
-            pointer-events: auto;
-            align-items: center;
+            background-color: rgba(0, 0, 0, 0.6); padding: 10px; border-radius: 10px;
+            display: flex; gap: 10px; pointer-events: auto; align-items: center;
         }
 
         button, input[type="range"] {
-            padding: 10px 15px; border: none; border-radius: 5px;
-            background-color: #4285f4; color: white; font-weight: bold;
-            cursor: pointer; font-size: 14px; white-space: nowrap;
+            padding: 10px 15px; border: none; border-radius: 5px; background-color: #4285f4;
+            color: white; font-weight: bold; cursor: pointer; font-size: 14px; white-space: nowrap;
         }
         button:disabled { background-color: #cccccc; cursor: default; opacity: 0.7; }
         button.danger { background-color: #db4437; }
@@ -41,17 +31,14 @@
         button.success { background-color: #0f9d58; }
 
         #instructions {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7); color: white; padding: 8px 15px;
-            border-radius: 10px; z-index: 10; text-align: center; max-width: 90%;
-            font-size: 14px; pointer-events: none;
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.7);
+            color: white; padding: 8px 15px; border-radius: 10px; z-index: 10; text-align: center;
+            max-width: 90%; font-size: 14px; pointer-events: none;
         }
         #image-input { display: none; }
-        #loading-screen { /* Basit yükleme ekranı */
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.8); color: white;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 100; text-align: center;
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8);
+            color: white; display: none; justify-content: center; align-items: center; z-index: 100; text-align: center;
         }
 
         .slider-container { display: flex; align-items: center; gap: 8px; color: white; }
@@ -60,77 +47,65 @@
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: #4285f4; border-radius: 50%; cursor: pointer; border: 2px solid white; margin-top: -5px; }
         input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: #4285f4; border-radius: 50%; cursor: pointer; border: 2px solid white; }
 
-        /* Hide elements initially */
         #manipulation-container, #interaction-container { display: none; }
     </style>
 </head>
 <body>
-    <!-- AR Butonu (İlk kodunuzdaki gibi bir buton varsayılıyor) -->
-    <!-- <button id="ar-button" style="position:fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999;">AR Başlat</button> -->
+    <div id="loading-screen">AR Başlatılıyor...</div>
+    <div id="instructions">Başlamak için 'AR Başlat'a dokunun.</div>
 
-    <div id="loading-screen" style="display: none;">AR Yükleniyor...</div>
-    <div id="instructions">Bir yüzey algılanmasını bekleyin...</div>
-
-    <!-- Ana Kontroller -->
-    <div id="ui-container">
+    <!-- Ana Kontroller (Başlangıçta gizli olabilir) -->
+    <div id="ui-container" style="display: none;">
         <div class="button-group">
             <button id="select-image-btn">Resim Seç</button>
             <button id="place-image-btn" disabled>Yerleştir</button>
             <button id="cancel-placement-btn" style="display: none;">İptal</button>
         </div>
     </div>
-
-    <!-- Önizleme Kontrolleri -->
-    <div id="manipulation-container">
-        <div class="button-group">
-            <div class="slider-container">
-                <label for="scale-slider">Boyut:</label>
-                <input type="range" id="scale-slider" min="0.1" max="3" step="0.05" value="1">
-            </div>
-            <div class="slider-container">
-                <label for="rotate-slider">Döndür:</label>
-                <input type="range" id="rotate-slider" min="-180" max="180" step="5" value="0">
-            </div>
-        </div>
+    <!-- Diğer Konteynerler (Başlangıçta gizli) -->
+    <div id="manipulation-container" style="display: none;"> <!-- Initially hidden -->
+         <div class="button-group">
+             <div class="slider-container">
+                 <label for="scale-slider">Boyut:</label>
+                 <input type="range" id="scale-slider" min="0.1" max="3" step="0.05" value="1">
+             </div>
+             <div class="slider-container">
+                  <label for="rotate-slider">Döndür:</label>
+                 <input type="range" id="rotate-slider" min="-180" max="180" step="5" value="0">
+              </div>
+          </div>
     </div>
-
-    <!-- Etkileşim Kontrolleri -->
-    <div id="interaction-container">
+    <div id="interaction-container" style="display: none;"> <!-- Initially hidden -->
         <div class="button-group">
             <button id="remove-btn" class="danger">Kaldır</button>
-            <!-- Düzenle butonu şimdilik eklenmedi, kilidi açmak yeterli -->
             <button id="lock-btn" class="warning">Kilitle</button>
         </div>
     </div>
 
     <input type="file" id="image-input" accept="image/*">
 
-    <!-- THREE.js (r128 veya daha yeni bir sürüm önerilir) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script> -->
 
     <script>
         // --- Değişkenler ---
         let camera, scene, renderer;
-        let controller; // XR Controller
-        let reticle;    // Hedef göstergesi
+        let controller;
+        let reticle;
         let hitTestSource = null;
         let hitTestSourceRequested = false;
         let currentSession = null;
         let referenceSpace = null;
-
-        // Resim Yönetimi
-        let previewImage = null; // { texture, mesh, aspectRatio, currentScale, currentRotationY }
-        let placedImages = [];   // { id, mesh, anchor, scale, rotationY, locked }
-        let selectedPlacedImage = null; // Seçili resim
-
-        // Durum Yönetimi (Basit)
+        let previewImage = null;
+        let placedImages = [];
+        let selectedPlacedImage = null;
         let isPreviewing = false;
         let isInteracting = false;
+        let arButton = null; // AR Başlatma butonu referansı
 
-        // UI Elementleri
+        // --- UI Elementleri ---
         const loadingScreen = document.getElementById('loading-screen');
         const instructionsElement = document.getElementById('instructions');
+        const uiContainer = document.getElementById('ui-container'); // Ana UI konteyneri
         const selectImageBtn = document.getElementById('select-image-btn');
         const placeImageBtn = document.getElementById('place-image-btn');
         const cancelPlacementBtn = document.getElementById('cancel-placement-btn');
@@ -142,140 +117,260 @@
         const removeBtn = document.getElementById('remove-btn');
         const lockBtn = document.getElementById('lock-btn');
 
-        // --- Başlatma ---
+
+        // --- Başlatma (Three.js Sahnesi) ---
         function init() {
-            console.log("init() called");
-            loadingScreen.style.display = 'flex';
+            console.log("--- init() CALLED ---");
+            try {
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 40);
 
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 40);
+                const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2);
+                light.position.set(0.5, 1, 0.25);
+                scene.add(light);
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                scene.add(ambientLight);
 
-            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2);
-            light.position.set(0.5, 1, 0.25);
-            scene.add(light);
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-            scene.add(ambientLight);
+                // --- DEBUG: Başlangıçta basit bir küp ekle ---
+                const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                const material = new THREE.MeshNormalMaterial();
+                const debugCube = new THREE.Mesh(geometry, material);
+                debugCube.position.z = -0.5; // Kameranın biraz önüne koy
+                debugCube.name = "debugCube";
+                scene.add(debugCube);
+                console.log("Debug cube added to scene.");
+                // --- DEBUG END ---
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.xr.enabled = true; // XR'ı etkinleştir ama oturumu henüz başlatma
+                document.body.appendChild(renderer.domElement);
+                console.log("Renderer created and appended.");
 
-            // XR Oturum Başlatma Butonu (Sizin ilk kodunuzda vardı, ona tıklanınca startARSession çağrılmalı)
-            // Örnek: document.getElementById('ar-button').addEventListener('click', startARSession);
+                // Reticle (Oluştur ama başlangıçta gizle)
+                reticle = new THREE.Mesh(
+                    new THREE.RingGeometry(0.05, 0.07, 32).rotateX(-Math.PI / 2),
+                    new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true, depthTest: false })
+                );
+                reticle.matrixAutoUpdate = false;
+                reticle.visible = false;
+                scene.add(reticle);
 
-            // Reticle
-            reticle = new THREE.Mesh(
-                new THREE.RingGeometry(0.05, 0.07, 32).rotateX(-Math.PI / 2),
-                new THREE.MeshBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true, depthTest: false })
-            );
-            reticle.matrixAutoUpdate = false;
-            reticle.visible = false;
-            scene.add(reticle);
+                // Controller (Oluştur)
+                controller = renderer.xr.getController(0);
+                controller.addEventListener('select', onSelect);
+                scene.add(controller);
 
-            // Controller (Input için)
-            controller = renderer.xr.getController(0);
-            controller.addEventListener('select', onSelect); // Tıklama/Dokunma
-            scene.add(controller);
+                // UI Event Listeners
+                window.addEventListener('resize', onWindowResize);
+                selectImageBtn.addEventListener('click', () => imageInput.click());
+                imageInput.addEventListener('change', handleImageSelect);
+                placeImageBtn.addEventListener('click', placeImage);
+                cancelPlacementBtn.addEventListener('click', cancelPlacement);
+                scaleSlider.addEventListener('input', handleManipulation);
+                rotateSlider.addEventListener('input', handleManipulation);
+                removeBtn.addEventListener('click', handleRemove);
+                lockBtn.addEventListener('click', handleLock);
 
-            // UI Event Listeners
-            window.addEventListener('resize', onWindowResize);
-            selectImageBtn.addEventListener('click', () => imageInput.click());
-            imageInput.addEventListener('change', handleImageSelect);
-            placeImageBtn.addEventListener('click', placeImage);
-            cancelPlacementBtn.addEventListener('click', cancelPlacement);
-            scaleSlider.addEventListener('input', handleManipulation);
-            rotateSlider.addEventListener('input', handleManipulation);
-            removeBtn.addEventListener('click', handleRemove);
-            lockBtn.addEventListener('click', handleLock);
+                // Render döngüsünü başlat (hem AR hem non-AR için)
+                renderer.setAnimationLoop(render);
+                console.log("--- init() COMPLETED ---");
 
-            // İlk UI durumu
-            updateUI();
-
-            // Render döngüsünü başlat
-            renderer.setAnimationLoop(render);
-            console.log("init() complete");
-            loadingScreen.style.display = 'none'; // Başlatma tamamlandı
+            } catch (error) {
+                console.error("!!! ERROR during init():", error);
+                alert("Sahne başlatılırken hata oluştu: " + error.message + "\nKonsolu kontrol edin.");
+                loadingScreen.innerText = "Hata: Başlatılamadı.";
+                loadingScreen.style.display = 'flex';
+            }
         }
 
-        // --- AR Oturumu ---
-        // Bu fonksiyonu AR başlatma butonunuzun çağırması gerekir
+        // --- AR Oturumu Başlatma ---
         function startARSession() {
-            console.log("Requesting AR Session...");
+            console.log("--- startARSession() CALLED ---");
+            if (!navigator.xr) {
+                alert("WebXR desteklenmiyor!");
+                return;
+            }
              if (currentSession) {
                  console.log("Session already active.");
                  return;
              }
+
+            loadingScreen.innerText = "AR Oturumu İsteniyor...";
             loadingScreen.style.display = 'flex';
-             navigator.xr.requestSession('immersive-ar', {
-                 requiredFeatures: ['hit-test', 'anchors', 'dom-overlay'], // Anchors isteyelim
+
+             // AR Butonunu gizle
+             if(arButton) arButton.style.display = 'none';
+
+            navigator.xr.requestSession('immersive-ar', {
+                 requiredFeatures: ['hit-test', 'anchors', 'dom-overlay'],
                  domOverlay: { root: document.body }
-             }).then(onSessionStarted).catch(err => {
-                  console.error("AR Session request failed:", err);
-                  alert("AR oturumu başlatılamadı. Cihazınızın veya tarayıcınızın desteklediğinden emin olun.\nHata: " + err.message);
+             }).then(onSessionStarted)
+               .catch(err => {
+                  console.error("!!! AR Session request FAILED:", err);
+                  alert("AR oturumu başlatılamadı.\nNeden: " + err.message + "\nCihaz/Tarayıcı uyumluluğunu ve HTTPS bağlantısını kontrol edin.");
                   loadingScreen.style.display = 'none';
+                  // AR Butonunu tekrar göster?
+                  if(arButton) arButton.style.display = 'block';
              });
         }
 
         function onSessionStarted(session) {
-            console.log('AR Session started:', session);
-            loadingScreen.style.display = 'none';
+            console.log('--- onSessionStarted() CALLED ---', session);
             currentSession = session;
             session.addEventListener('end', onSessionEnded);
 
             // Referans uzayı ve Hit Test kaynağını al
             session.requestReferenceSpace('local').then((refSpace) => {
-                console.log("Reference space 'local' obtained.");
+                console.log("Reference space obtained.");
                 referenceSpace = refSpace;
-                session.requestHitTestSource({ space: referenceSpace }).then((source) => {
-                    console.log("Hit test source obtained.");
-                    hitTestSource = source;
-                    hitTestSourceRequested = true;
-                }).catch(err => {
-                    console.error("Failed to get hit test source:", err);
-                     alert("Yüzey algılama başlatılamadı.");
-                    hitTestSourceRequested = false;
-                });
+                return session.requestHitTestSource({ space: referenceSpace }); // Zincirleme
+            }).then((source) => {
+                 console.log("Hit test source obtained.");
+                 hitTestSource = source;
+                 hitTestSourceRequested = true;
+                 // Renderer'a oturumu bildir (Hit Test alındıktan sonra)
+                 return renderer.xr.setSession(session); // setSession da bir Promise döndürür
+            }).then(() => {
+                console.log("Renderer XR session set successfully.");
+                loadingScreen.style.display = 'none';
+                uiContainer.style.display = 'flex'; // Ana UI'ı göster
+                updateUI(); // UI'ı güncelle (talimat vb.)
             }).catch(err => {
-                console.error("Failed to get reference space 'local':", err);
-                 alert("AR referans uzayı alınamadı.");
+                console.error("!!! Error during session setup (refSpace, hitTest, or setSession):", err);
+                 alert("AR oturumu ayarlanırken hata: " + err.message);
+                 loadingScreen.style.display = 'none';
+                 // Oturumu sonlandırmayı dene
+                 if (currentSession) {
+                     currentSession.end().catch(e => console.error("Error ending session after setup error:", e));
+                 }
+                 if (arButton) arButton.style.display = 'block'; // Butonu geri getir
             });
-
-            // Renderer'a oturumu bildir
-             renderer.xr.setSession(session).then(() => {
-                 console.log("Renderer XR session set.");
-                 updateUI(); // AR başladığında UI'ı güncelle
-             }).catch(err => {
-                  console.error("Failed to set renderer XR session:", err);
-             });
         }
+
 
         function onSessionEnded() {
-            console.log('AR Session ended');
-            currentSession = null;
-            hitTestSource = null;
-            hitTestSourceRequested = false;
-            referenceSpace = null;
+             console.log('--- onSessionEnded() CALLED ---');
+             // Önceki temizlik kodu...
+             currentSession = null;
+             hitTestSource = null;
+             hitTestSourceRequested = false;
+             referenceSpace = null;
+             cancelPlacement();
+             placedImages.forEach(imgData => disposePlacedImage(imgData));
+             placedImages = [];
+             selectedPlacedImage = null;
+             reticle.visible = false;
+             isPreviewing = false;
+             isInteracting = false;
 
-            // Temizlik
-            cancelPlacement();
-            placedImages.forEach(imgData => disposePlacedImage(imgData));
-            placedImages = [];
-            selectedPlacedImage = null;
-            reticle.visible = false;
-            isPreviewing = false;
-            isInteracting = false;
-
-            // Renderer'ın XR oturumunu temizle (önemli olabilir)
-            renderer.xr.setSession(null).catch(err => console.error("Error clearing renderer session:", err));
+              // Renderer'ın XR oturumunu temizle
+              renderer.xr.setSession(null).catch(err => console.error("Error clearing renderer session:", err));
 
 
-            alert("AR Oturumu sonlandı.");
-            updateUI(); // UI'ı sıfırla
+             // UI elementlerini gizle/sıfırla
+             uiContainer.style.display = 'none';
+             manipulationContainer.style.display = 'none';
+             interactionContainer.style.display = 'none';
+             instructionsElement.textContent = "AR Oturumu sonlandı. Tekrar başlatmak için sayfayı yenileyin veya butonu kullanın.";
+             loadingScreen.style.display = 'none';
+
+             // AR Butonunu tekrar göster
+             if (arButton) arButton.style.display = 'block';
+
+             alert("AR Oturumu sonlandı.");
         }
 
-        // --- Olay Yöneticileri ---
+        // --- Diğer Fonksiyonlar (handleImageSelect, placeImage, render vb. önceki koddan alınabilir) ---
+        // ... (onWindowResize) ...
+        // ... (handleImageSelect - önceki gibi) ...
+        // ... (cancelPlacement - önceki gibi) ...
+        // ... (placeImage - önceki gibi, ANCHOR KULLANARAK) ...
+        // ... (handleManipulation - önceki gibi) ...
+        // ... (onSelect - önceki gibi) ...
+        // ... (highlightSelection - önceki gibi) ...
+        // ... (handleRemove - önceki gibi) ...
+        // ... (handleLock - önceki gibi) ...
+        // ... (disposePlacedImage - önceki gibi) ...
+        // ... (resetManipulationControls - önceki gibi) ...
+        // ... (updateUI - önceki gibi, ama uiContainer'ı da yönetebilir) ...
+
+        // Önceki koddan kopyalanacak fonksiyonlar:
+        function onWindowResize() { /* ... */ }
+        function handleImageSelect(event) { /* ... Önceki koddan kopyala ... */ }
+        function cancelPlacement() { /* ... Önceki koddan kopyala ... */ }
+        function placeImage() { /* ... Önceki koddan (ANCHOR kullanan) kopyala ... */ }
+        function handleManipulation() { /* ... Önceki koddan kopyala ... */ }
+        function onSelect(event) { /* ... Önceki koddan kopyala ... */ }
+        function highlightSelection(mesh, selected) { /* ... Önceki koddan kopyala ... */ }
+        function handleRemove() { /* ... Önceki koddan kopyala ... */ }
+        function handleLock() { /* ... Önceki koddan kopyala ... */ }
+        function disposePlacedImage(placedImageData) { /* ... Önceki koddan kopyala ... */ }
+        function resetManipulationControls() { /* ... Önceki koddan kopyala ... */ }
+        function updateUI() { /* ... Önceki koddan kopyala, uiContainer.style.display'i de yönet ... */ }
+
+        // --- Render Döngüsü ---
+        function render(timestamp, frame) {
+            const isAR = renderer.xr.isPresenting;
+
+            // AR Aktif Değilse: Basit sahneyi render et (küp dönsün)
+            if (!isAR) {
+                 const cube = scene.getObjectByName("debugCube");
+                 if (cube) {
+                     cube.rotation.x += 0.01;
+                     cube.rotation.y += 0.01;
+                 }
+                 renderer.render(scene, camera);
+                 return;
+            }
+
+            // --- AR Aktif ---
+            if (!currentSession || !frame || !referenceSpace) {
+                // Henüz tam olarak hazır değilse bekle
+                console.warn("Render loop: AR active but session/frame/refSpace missing.");
+                try { renderer.render(scene, camera); } catch(e) { /* Hata yönetimi */ } // Sadece kamerayı render et
+                return;
+            }
+
+            // --- Hit Test ve Reticle (Önceki koddan kopyala) ---
+            /* ... Önceki koddan hit test ve reticle güncelleme mantığını kopyala ... */
+
+            // --- Yerleştirilmiş Resimleri Güncelle (Önceki koddan kopyala) ---
+            /* ... Önceki koddan anchor/pose güncelleme mantığını kopyala ... */
+
+
+            // --- Final Render ---
+            try {
+                renderer.render(scene, camera);
+            } catch(e) {
+                console.error("!!! Render loop error:", e);
+                if (currentSession) { currentSession.end().catch(err => {}); }
+            }
+        }
+
+
+        // --- Uygulamayı Çalıştır ---
+        window.addEventListener('load', () => {
+            console.log("--- window loaded ---");
+
+             // AR Başlatma butonu oluştur
+            arButton = document.createElement('button');
+            arButton.textContent = 'AR Başlat';
+            arButton.style.cssText = 'position:fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999; padding: 12px 20px; background-color: #6a0dad; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;';
+            arButton.onclick = startARSession; // Buton sadece AR oturumunu başlatacak
+            document.body.appendChild(arButton);
+
+             // Three.js sahnesini HEMEN hazırla
+            init();
+
+            console.log("Initial setup complete. Waiting for 'AR Başlat' click.");
+        });
+
+         // --- ÖNCEKİ KODDAN KOPYALANACAK FONKSİYONLARIN İÇERİĞİ ---
+         // Bu fonksiyonların içini önceki çalışan koddan buraya kopyalayın.
+         // Dikkat: updateUI fonksiyonunu uiContainer'ı da yönetecek şekilde güncelleyin.
+
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -363,28 +458,26 @@
             if (!previewImage || !reticle.visible || !currentSession || !referenceSpace) return;
             console.log("Placing image...");
 
-            const hitMatrix = reticle.matrixWorld; // Reticle'ın dünya matrisini al
+            const hitMatrix = reticle.matrixWorld;
             const position = new THREE.Vector3();
             const quaternion = new THREE.Quaternion();
-            hitMatrix.decompose(position, quaternion, new THREE.Vector3()); // Pozisyon ve rotasyonu al
+            hitMatrix.decompose(position, quaternion, new THREE.Vector3());
             const anchorPose = new XRRigidTransform(position, quaternion);
 
-            // Çıpa Oluşturma
             currentSession.requestAnimationFrame((time, frame) => {
                 try {
                     frame.createAnchor(anchorPose, referenceSpace).then(
                         (anchor) => {
                             console.log("Anchor created:", anchor);
                             const geometry = new THREE.PlaneGeometry(1, 1 / previewImage.aspectRatio);
-                             // Son yerleştirme için Lambert kullanalım (ışık alır)
                              const material = new THREE.MeshLambertMaterial({
-                                 map: previewImage.texture, // Önizleme dokusunu kullan
+                                 map: previewImage.texture,
                                  transparent: false, side: THREE.DoubleSide, color: 0xffffff
                              });
                              const finalMesh = new THREE.Mesh(geometry, material);
                              finalMesh.userData.isPlacedImage = true;
                              finalMesh.userData.id = THREE.MathUtils.generateUUID();
-                             finalMesh.matrixAutoUpdate = false; // Çıpaya göre güncellenecek
+                             finalMesh.matrixAutoUpdate = false;
 
                             const placedData = {
                                 id: finalMesh.userData.id, mesh: finalMesh, anchor: anchor,
@@ -394,11 +487,10 @@
                             scene.add(finalMesh);
                             console.log("Placed image added:", placedData.id);
 
-                            // Önizlemeyi temizle (doku hariç)
                             scene.remove(previewImage.mesh);
                             previewImage.mesh?.geometry?.dispose();
                             previewImage.mesh?.material?.dispose();
-                            previewImage = null; // Önemli: Önizleme nesnesini null yap
+                            previewImage = null;
 
                             isPreviewing = false;
                             updateUI();
@@ -406,7 +498,6 @@
                         (error) => {
                             console.error("Anchor creation failed:", error);
                             alert("Resim sabitlenemedi (çıpa oluşturulamadı).");
-                            // Belki önizlemeye geri dön?
                             isPreviewing = true;
                             updateUI();
                         }
@@ -427,22 +518,16 @@
             if (isPreviewing && previewImage) {
                 previewImage.currentScale = scaleValue;
                 previewImage.currentRotationY = rotateValue;
-                // Gerçek mesh güncellemesi render() içinde yapılacak
             }
-            // Yerleştirilmiş resim düzenleme şimdilik eklenmedi
-            // else if (isInteracting && selectedPlacedImage && !selectedPlacedImage.locked) { ... }
         }
 
-        // Tıklama/Dokunma İşleyici
         function onSelect(event) {
             if (isPreviewing && reticle.visible) {
                 placeImage();
                 return;
             }
-
             if (!currentSession || !referenceSpace || !controller) return;
 
-            // Raycaster ile tıklanan nesneyi bul
             const raycaster = new THREE.Raycaster();
             const controllerMatrix = controller.matrixWorld;
             const controllerPosition = new THREE.Vector3().setFromMatrixPosition(controllerMatrix);
@@ -453,7 +538,6 @@
 
             const intersectableObjects = placedImages.filter(p => p.mesh?.visible).map(p => p.mesh);
             if (intersectableObjects.length === 0) {
-                 // Boşluğa tıklandı, seçimi kaldır
                  if (selectedPlacedImage) {
                      console.log("Clicked empty space, deselecting.");
                      highlightSelection(selectedPlacedImage.mesh, false);
@@ -464,21 +548,16 @@
                  return;
             }
 
-
             const intersects = raycaster.intersectObjects(intersectableObjects);
-
             if (intersects.length > 0) {
                 const intersectedObject = intersects[0].object;
                 const newlySelected = placedImages.find(p => p.mesh === intersectedObject);
-
                 if (newlySelected) {
                     if (selectedPlacedImage && selectedPlacedImage.id === newlySelected.id) {
-                        // Aynı resme tekrar tıklandı (şimdilik bir şey yapma)
                         console.log("Clicked already selected image.");
                     } else {
-                        // Yeni bir resim seçildi
                         console.log("Selected placed image:", newlySelected.id);
-                         if (selectedPlacedImage) { // Öncekini kaldır
+                         if (selectedPlacedImage) {
                              highlightSelection(selectedPlacedImage.mesh, false);
                          }
                          selectedPlacedImage = newlySelected;
@@ -488,7 +567,6 @@
                     }
                 }
             } else {
-                 // Boşluğa tıklandı, seçimi kaldır
                  if (selectedPlacedImage) {
                      console.log("Clicked empty space, deselecting.");
                      highlightSelection(selectedPlacedImage.mesh, false);
@@ -508,10 +586,9 @@
                 existingWireframe.geometry?.dispose();
                 existingWireframe.material?.dispose();
             }
-
             if (selected) {
                 const imgData = placedImages.find(p => p.mesh === mesh);
-                const wireframeColor = imgData?.locked ? 0xff0000 : 0xffff00; // Kilitliyse kırmızı, değilse sarı
+                const wireframeColor = imgData?.locked ? 0xff0000 : 0xffff00;
                 const wireframeGeo = new THREE.WireframeGeometry(mesh.geometry);
                 const wireframeMat = new THREE.LineBasicMaterial({ color: wireframeColor, linewidth: 2, depthTest: false, transparent: true, opacity: 0.8 });
                 const wireframe = new THREE.LineSegments(wireframeGeo, wireframeMat);
@@ -524,15 +601,10 @@
             if (!selectedPlacedImage) return;
             const idToRemove = selectedPlacedImage.id;
             const imageToRemove = selectedPlacedImage;
-
-            // Seçimi kaldır ve UI'ı güncelle *önce*
             selectedPlacedImage = null;
             isInteracting = false;
-            updateUI(); // Interaction panelini gizle
-
-            // Diziden çıkar
+            updateUI();
             placedImages = placedImages.filter(img => img.id !== idToRemove);
-            // Kaynakları temizle
             disposePlacedImage(imageToRemove);
             console.log("Removed image:", idToRemove);
         }
@@ -541,14 +613,10 @@
             if (!selectedPlacedImage) return;
             selectedPlacedImage.locked = !selectedPlacedImage.locked;
             console.log(`Image ${selectedPlacedImage.id} locked: ${selectedPlacedImage.locked}`);
-            // Kilitleme buton metnini ve rengini güncelle
             lockBtn.textContent = selectedPlacedImage.locked ? "Kilidi Aç" : "Kilitle";
             lockBtn.classList.toggle('success', selectedPlacedImage.locked);
             lockBtn.classList.toggle('warning', !selectedPlacedImage.locked);
-            // Seçim rengini güncelle
             highlightSelection(selectedPlacedImage.mesh, true);
-            // Düzenleme butonunu devre dışı bırak/etkinleştir (eğer varsa)
-            // editBtn.disabled = selectedPlacedImage.locked;
         }
 
         function disposePlacedImage(placedImageData) {
@@ -558,35 +626,40 @@
                  try { placedImageData.anchor.delete(); } catch (e) { console.warn("Anchor delete failed:", e); }
              }
              if (placedImageData.mesh) {
-                 highlightSelection(placedImageData.mesh, false); // Varsa wireframe'i kaldır
+                 highlightSelection(placedImageData.mesh, false);
                  scene.remove(placedImageData.mesh);
                  placedImageData.mesh.geometry?.dispose();
-                 placedImageData.mesh.material?.map?.dispose(); // Texture
-                 placedImageData.mesh.material?.dispose();     // Material
+                 placedImageData.mesh.material?.map?.dispose();
+                 placedImageData.mesh.material?.dispose();
              }
         }
-
 
         function resetManipulationControls() {
             scaleSlider.value = 1.0;
             rotateSlider.value = 0;
         }
 
-        // --- UI Güncelleme ---
         function updateUI() {
-            console.log(`updateUI: isPreviewing=${isPreviewing}, isInteracting=${isInteracting}, selected=${selectedPlacedImage?.id}`);
-            // Konteynerler
-            manipulationContainer.style.display = isPreviewing ? 'flex' : 'none';
-            interactionContainer.style.display = isInteracting ? 'flex' : 'none';
+            const isAR = renderer.xr.isPresenting;
+            console.log(`updateUI: isAR=${isAR}, isPreviewing=${isPreviewing}, isInteracting=${isInteracting}, selected=${selectedPlacedImage?.id}`);
 
-            // Ana Butonlar
-            selectImageBtn.disabled = isPreviewing; // Önizleme varken yeni resim seçme
-            placeImageBtn.disabled = !isPreviewing || !reticle.visible; // Sadece önizleme ve reticle varsa aktif
-            cancelPlacementBtn.style.display = isPreviewing ? 'inline-block' : 'none'; // Sadece önizlemede göster
+            // Ana UI Konteyneri (sadece AR aktifken göster)
+            uiContainer.style.display = isAR ? 'flex' : 'none';
+
+            // Diğer Konteynerler
+            manipulationContainer.style.display = isAR && isPreviewing ? 'flex' : 'none';
+            interactionContainer.style.display = isAR && isInteracting ? 'flex' : 'none';
+
+            // Ana Butonlar (sadece AR aktifken anlamlı)
+            if (isAR) {
+                selectImageBtn.disabled = isPreviewing;
+                placeImageBtn.disabled = !isPreviewing || !reticle.visible;
+                cancelPlacementBtn.style.display = isPreviewing ? 'inline-block' : 'none';
+            }
 
             // Talimatlar
-            if (!currentSession) {
-                 instructionsElement.textContent = "AR Oturumunu başlatın.";
+            if (!isAR) {
+                 instructionsElement.textContent = "Başlamak için 'AR Başlat'a dokunun.";
             } else if (isPreviewing) {
                  instructionsElement.textContent = reticle.visible ? "Konumlandır/Boyutlandır & Yerleştir" : "Yüzey bulun...";
             } else if (isInteracting && selectedPlacedImage) {
@@ -597,8 +670,8 @@
                 instructionsElement.textContent = "Yüzey arayın veya Resim Seçin.";
             }
 
-            // Etkileşim Butonları (Eğer gösteriliyorsa)
-            if (isInteracting && selectedPlacedImage) {
+            // Etkileşim Butonları
+            if (isAR && isInteracting && selectedPlacedImage) {
                 lockBtn.textContent = selectedPlacedImage.locked ? "Kilidi Aç" : "Kilitle";
                 lockBtn.classList.toggle('success', selectedPlacedImage.locked);
                 lockBtn.classList.toggle('warning', !selectedPlacedImage.locked);
@@ -606,30 +679,17 @@
         }
 
 
-        // --- Render Döngüsü ---
-        function render(timestamp, frame) {
-             if (!currentSession || !renderer.xr.isPresenting) {
-                  // AR Aktif değilse bir şey yapma veya sadece render et
-                  if(reticle) reticle.visible = false;
-                  if(previewImage?.mesh) previewImage.mesh.visible = false;
-                   try { renderer.render(scene, camera); } catch(e) { console.error("Render error (no session?):", e); }
-                  return;
-             }
+         // --- Render Döngüsü İçindeki EKSİK KISIMLAR ---
+         // Önceki koddan aşağıdaki mantıkları buraya kopyalayın:
+        /*
+         function render(timestamp, frame) {
+             // ... (isAR kontrolü) ...
 
-            if (!frame) {
-                console.warn("Render loop called without XRFrame.");
-                 try { renderer.render(scene, camera); } catch(e) { console.error("Render error (no frame?):", e); }
-                return; // Frame yoksa devam etme
-            }
-
-             if (!referenceSpace) {
-                 console.log("Waiting for reference space...");
-                 try { renderer.render(scene, camera); } catch(e) { console.error("Render error (no ref space?):", e); }
-                 return; // Referans uzayı yoksa devam etme
-             }
+             // --- AR Aktif ---
+             // ... (session/frame/refSpace kontrolü) ...
 
 
-            // Hit Test ve Reticle
+             // --- Hit Test ve Reticle ---
              if (hitTestSourceRequested && hitTestSource) {
                  const hitTestResults = frame.getHitTestResults(hitTestSource);
                  if (hitTestResults.length > 0) {
@@ -639,18 +699,16 @@
                          reticle.visible = true;
                          reticle.matrix.fromArray(hitPose.transform.matrix);
                          reticle.matrixWorldNeedsUpdate = true;
-                         reticle.material.color.set(0x00ff00); // Yeşil: Yüzey bulundu
+                         reticle.material.color.set(0x00ff00);
                          reticle.material.opacity = 0.8;
 
-                         // Önizleme varsa güncelle
                          if (isPreviewing && previewImage) {
                              previewImage.mesh.visible = true;
                              const scaleMatrix = new THREE.Matrix4().makeScale(previewImage.currentScale, previewImage.currentScale, previewImage.currentScale);
                              const rotationMatrix = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(previewImage.currentRotationY));
                              previewImage.mesh.matrix.copy(reticle.matrix).multiply(rotationMatrix).multiply(scaleMatrix);
                              previewImage.mesh.matrixWorldNeedsUpdate = true;
-                             // Yerleştir butonunu etkinleştir (UI update içinde zaten yapılıyor ama garanti olsun)
-                             if (placeImageBtn.disabled) { placeImageBtn.disabled = false; updateUI(); }
+                             if (placeImageBtn.disabled) { placeImageBtn.disabled = false; /* updateUI(); */ } // updateUI çok sık çağrılabilir, dikkat
                          } else if (previewImage) {
                               previewImage.mesh.visible = false;
                          }
@@ -658,27 +716,23 @@
                      } else {
                           reticle.visible = false;
                            if (previewImage) previewImage.mesh.visible = false;
-                           if (isPreviewing && !placeImageBtn.disabled) { placeImageBtn.disabled = true; updateUI(); }
+                           if (isPreviewing && !placeImageBtn.disabled) { placeImageBtn.disabled = true; /* updateUI(); */ }
                      }
                  } else {
-                     reticle.visible = true; // Yüzey bulamasa da reticle görünsün (kırmızı)
+                     reticle.visible = false; // Yüzey yoksa reticle gizli kalsın
                      reticle.material.color.set(0xff0000);
                      reticle.material.opacity = 0.5;
-                      // Ekranın ortasına doğru bir yere koyabiliriz (daha karmaşık) veya sadece görünmez yapabiliriz
-                      // Şimdilik görünmez yapalım:
-                      reticle.visible = false;
                       if (previewImage) previewImage.mesh.visible = false;
-                      if (isPreviewing && !placeImageBtn.disabled) { placeImageBtn.disabled = true; updateUI(); }
+                      if (isPreviewing && !placeImageBtn.disabled) { placeImageBtn.disabled = true; /* updateUI(); */ }
                  }
              } else {
-                  // Hit test kaynağı yok/bekleniyor
                   reticle.visible = false;
                   if (previewImage) previewImage.mesh.visible = false;
-                  if (isPreviewing && !placeImageBtn.disabled) { placeImageBtn.disabled = true; updateUI(); }
+                  if (isPreviewing && !placeImageBtn.disabled) { placeImageBtn.disabled = true; /* updateUI(); */ }
              }
 
 
-            // Yerleştirilmiş Resimleri Güncelle (Çıpa ile)
+             // --- Yerleştirilmiş Resimleri Güncelle (Çıpa ile) ---
              placedImages.forEach(imgData => {
                  if (!imgData.mesh) return;
                  if (imgData.anchor) {
@@ -686,63 +740,22 @@
                      if (anchorPose) {
                          imgData.mesh.visible = true;
                          imgData.mesh.matrix.fromArray(anchorPose.transform.matrix);
-                         // Yerel ölçek ve döndürmeyi uygula
                          const scaleMatrix = new THREE.Matrix4().makeScale(imgData.scale, imgData.scale, imgData.scale);
                          const rotationMatrix = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(imgData.rotationY));
                          imgData.mesh.matrix.multiply(rotationMatrix).multiply(scaleMatrix);
                          imgData.mesh.matrixWorldNeedsUpdate = true;
                      } else {
-                         imgData.mesh.visible = false; // Çıpa takip edilemiyorsa gizle
+                         imgData.mesh.visible = false;
                      }
                  } else {
-                      imgData.mesh.visible = false; // Çıpa yoksa gizle
+                      imgData.mesh.visible = false;
                  }
              });
 
-            // Render
-             try {
-                renderer.render(scene, camera);
-             } catch(e) {
-                 console.error("!!! Render loop error:", e);
-                 // Oturumu sonlandırmayı deneyebilir veya hata mesajı gösterebilir
-                 if (currentSession) {
-                     console.log("Attempting to end session due to render error...");
-                      currentSession.end().catch(endErr => console.error("Error ending session after render error:", endErr));
-                 } else {
-                      alert("Render hatası oluştu. Sayfayı yenileyin.");
-                 }
-             }
-        }
+             // ... (Final Render ve Hata Yakalama) ...
+         }
+         */
 
-        // --- Uygulamayı Çalıştır ---
-        // Sayfa yüklendiğinde veya DOM hazır olduğunda init çağır
-        window.addEventListener('load', () => {
-            // AR Başlatma butonunu burada ayarlayın ve startARSession fonksiyonunu ona bağlayın
-            const arButton = document.createElement('button'); // Örnek AR butonu
-            arButton.textContent = 'AR Başlat';
-            arButton.style.cssText = 'position:fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 999; padding: 12px 20px; background-color: #8a2be2; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;';
-            arButton.onclick = () => {
-                // Butona tıklanınca AR başlatma + init
-                arButton.style.display = 'none'; // Butonu gizle
-                init(); // Three.js sahnesini hazırla
-                startARSession(); // AR oturumunu başlatmayı dene
-            };
-            document.body.appendChild(arButton);
-
-            // Ya da eğer buton HTML'de varsa:
-            // const arButtonHTML = document.getElementById('ar-button'); // ID'sini doğru ayarlayın
-            // if(arButtonHTML) {
-            //    arButtonHTML.addEventListener('click', () => {
-            //         arButtonHTML.style.display = 'none';
-            //         init();
-            //         startARSession();
-            //     });
-            // } else {
-            //     console.error("AR Başlatma butonu bulunamadı!");
-            //     // Belki otomatik başlatmayı deneyebilir veya hata mesajı verebilir
-            // }
-
-        });
 
     </script>
 </body>
