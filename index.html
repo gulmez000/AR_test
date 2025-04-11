@@ -5,28 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Modern Radyo Dinle</title>
   <style>
+    /* Koyu Tema */
     body {
       font-family: sans-serif;
       text-align: center;
-      background: #f0f0f0;
+      background: #1e1e1e; /* Koyu gri */
+      color: #eee; /* Açık gri yazı */
       padding: 1rem;
       margin: 0;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
 
     h1 {
       font-size: 1.8rem;
       margin-bottom: 1rem;
-      color: #333;
+      color: #eee;
+    }
+
+    #volume-control-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    #volume-label {
+      margin-right: 0.5rem;
+      font-size: 1rem;
+      color: #eee;
+    }
+
+    #volume-slider {
+      width: 150px;
+      height: 8px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #555;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      background: #f44336;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    #volume-slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      background: #f44336;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
     }
 
     #current-radio-container {
-      background: white;
+      background: #2c2c2c; /* Daha koyu gri */
       border-radius: 12px;
       padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       margin-bottom: 1rem;
-      display: none;
+      display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -46,13 +90,13 @@
 
     #current-radio-name {
       font-size: 1.2rem;
-      color: #333;
+      color: #eee;
       margin-bottom: 0.2rem;
     }
 
     #current-radio-status {
       font-size: 0.9rem;
-      color: #777;
+      color: #bbb;
     }
 
     #search-container {
@@ -64,13 +108,15 @@
     #search-input {
       flex-grow: 1;
       padding: 0.5rem;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 6px 0 0 6px;
       font-size: 1rem;
+      background: #333;
+      color: #eee;
     }
 
     #search-button {
-      background: #333;
+      background: #f44336;
       color: white;
       border: none;
       padding: 0.5rem 1rem;
@@ -81,7 +127,7 @@
     }
 
     #search-button:hover {
-      background: #555;
+      background: #d32f2f;
     }
 
     .radio-list {
@@ -93,16 +139,17 @@
 
     .radio {
       position: relative;
-      background: white;
+      background: #333;
       border-radius: 12px;
       padding: 0.5rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       cursor: pointer;
-      transition: transform 0.2s ease;
+      transition: transform 0.2s ease, background-color 0.2s ease;
     }
 
     .radio:hover {
       transform: scale(1.03);
+      background: #444;
     }
 
     .radio img {
@@ -117,7 +164,7 @@
     .radio p {
       font-size: 14px;
       margin: 0.5rem 0 0;
-      color: #555;
+      color: #eee;
     }
 
     .favorite {
@@ -127,11 +174,15 @@
       font-size: 20px;
       color: #999;
       user-select: none;
-      background: white;
+      background: #444;
       border-radius: 50%;
       padding: 4px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.2);
-      transition: color 0.3s;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      transition: color 0.3s, background-color 0.3s;
+    }
+
+    .favorite:hover {
+      background: #555;
     }
 
     .favorite.favorited {
@@ -143,7 +194,7 @@
       margin-top: 1rem;
       font-weight: bold;
       font-size: 1rem;
-      color: #333;
+      color: #bbb;
     }
 
     audio {
@@ -160,8 +211,8 @@
       margin: 0 5px;
       border: none;
       border-radius: 6px;
-      background: #333;
-      color: white;
+      background: #555;
+      color: #eee;
       cursor: pointer;
       font-size: 14px;
       transition: background-color 0.2s ease;
@@ -281,6 +332,11 @@
 <body>
   <h1></h1>
 
+  <div id="volume-control-container">
+    <label id="volume-label" for="volume-slider">Ses:</label>
+    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+  </div>
+
   <div id="current-radio-container">
     <img id="current-radio-logo" src="" alt="">
     <div id="current-radio-info">
@@ -341,6 +397,7 @@
     const searchInput = document.getElementById("search-input");
     const searchButton = document.getElementById("search-button");
     const equalizerContainer = document.getElementById("equalizer-container");
+    const volumeSlider = document.getElementById("volume-slider");
 
     let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
     let showFavoritesOnly = false;
@@ -349,7 +406,7 @@
     function updateRadioList(filterText = "") {
       radioList.innerHTML = "";
       const filteredRadios = radios.filter(radio => {
-        const matchesFilter = radio.name.toLowerCase().includes(filterText.toLowerCase());
+                const matchesFilter = radio.name.toLowerCase().includes(filterText.toLowerCase());
         const isFavorite = favorites.includes(radio.name);
         return showFavoritesOnly ? isFavorite && matchesFilter : matchesFilter;
       });
@@ -370,6 +427,7 @@
 
         div.onclick = () => {
           playRadio(radio);
+          window.scrollTo({ top: 0, behavior: 'smooth' }); // En üste kaydır
         };
 
         radioList.appendChild(div);
@@ -384,7 +442,7 @@
       currentRadioLogo.src = radio.logo;
       currentRadioContainer.style.display = "flex";
       currentRadioStatus.textContent = "Yükleniyor...";
-      body.classList.remove('playing');
+      body.classList.add('playing');
 
       if (window.hls) {
         window.hls.destroy();
@@ -400,7 +458,6 @@
           player.play().then(() => {
             statusDisplay.textContent = `Şu an çalan: ${radio.name}`;
             currentRadioStatus.textContent = "Çalınıyor";
-            body.classList.add('playing');
           }).catch(() => {
             statusDisplay.textContent = `${radio.name} - Oynatma hatası!`;
             currentRadioStatus.textContent = "Oynatma hatası!";
@@ -417,7 +474,6 @@
         player.play().then(() => {
           statusDisplay.textContent = `Şu an çalan: ${radio.name}`;
           currentRadioStatus.textContent = "Çalınıyor";
-          body.classList.add('playing');
         }).catch(() => {
           statusDisplay.textContent = `${radio.name} - Bağlantı hatası!`;
           currentRadioStatus.textContent = "Bağlantı hatası!";
@@ -458,6 +514,10 @@
       updateRadioList(searchInput.value);
     });
 
+    volumeSlider.addEventListener('input', () => {
+      player.volume = volumeSlider.value;
+    });
+
     updateRadioList(); // Sayfa ilk yüklendiğinde listeyi göster
 
     player.addEventListener('play', () => {
@@ -484,6 +544,7 @@
     const lastPlayed = JSON.parse(localStorage.getItem("lastPlayedRadio"));
     if (lastPlayed) {
       playRadio(lastPlayed);
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // Son çalınanı açınca da üste kaydır
     }
   </script>
 </body>
