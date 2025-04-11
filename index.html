@@ -128,6 +128,35 @@
         #controls input {
             width: 200px;
         }
+
+        #adjust-controls {
+            display: none;
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 11;
+            color: white;
+            text-align: center;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #adjust-controls label {
+            display: block;
+            margin: 5px 0;
+        }
+
+        #adjust-controls input[type="range"] {
+            width: 200px;
+        }
+
+        #adjust-controls button {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -143,23 +172,33 @@
         <div class="button-container">
             <button id="select-image-btn">Resim Seç</button>
             <button id="place-image-btn" disabled>Resmi Yerleştir</button>
-            <button id="adjust-btn" disabled>Boyut/Döndür</button>
+            <button id="adjust-btn" disabled>Ayarlar</button>
         </div>
     </div>
 
     <input type="file" id="image-input" accept="image/*">
 
-    <div id="controls">
+    <div id="adjust-controls">
         <label for="scale-slider">Boyut:</label>
         <input type="range" id="scale-slider" min="10" max="200" value="100">
 
-        <label for="rotate-slider">Döndürme:</label>
-        <input type="range" id="rotate-slider" min="0" max="360" value="0">
+        <label for="rotate-x-slider">Döndürme X:</label>
+        <input type="range" id="rotate-x-slider" min="0" max="360" value="0">
+
+        <label for="rotate-y-slider">Döndürme Y:</label>
+        <input type="range" id="rotate-y-slider" min="0" max="360" value="0">
+
+        <label for="rotate-z-slider">Döndürme Z:</label>
+        <input type="range" id="rotate-z-slider" min="0" max="360" value="0">
+
+        <label for="opacity-slider">Saydamlık:</label>
+        <input type="range" id="opacity-slider" min="0" max="100" value="100">
+
+        <button id="lock-btn-adjust">Kilitle</button>
     </div>
 
     <div id="contextMenu">
         <button id="remove-btn">Kaldır</button>
-        <button id="lock-btn">Kilitle</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -176,7 +215,10 @@
         let isImagePlaced = false;
         let isImageLocked = false;
         let currentScale = 1.0;
-        let currentRotation = 0;
+        let currentRotationX = 0;
+        let currentRotationY = 0;
+        let currentRotationZ = 0;
+        let currentOpacity = 1.0;
 
         // UI Elementleri
         const selectImageBtn = document.getElementById('select-image-btn');
@@ -187,10 +229,13 @@
         const loadingScreen = document.getElementById('loading-screen');
         const contextMenu = document.getElementById('contextMenu');
         const removeBtn = document.getElementById('remove-btn');
-        const lockBtn = document.getElementById('lock-btn');
-        const controls = document.getElementById('controls');
+        const adjustControls = document.getElementById('adjust-controls');
         const scaleSlider = document.getElementById('scale-slider');
-        const rotateSlider = document.getElementById('rotate-slider');
+        const rotateXSlider = document.getElementById('rotate-x-slider');
+        const rotateYSlider = document.getElementById('rotate-y-slider');
+        const rotateZSlider = document.getElementById('rotate-z-slider');
+        const opacitySlider = document.getElementById('opacity-slider');
+        const lockBtnAdjust = document.getElementById('lock-btn-adjust');
 
         // Sayfa yüklendiğinde initi başlat
         window.onload = init;
@@ -233,9 +278,9 @@
             selectImageBtn.addEventListener('click', () => imageInput.click());
             imageInput.addEventListener('change', handleImageSelect);
             placeImageBtn.addEventListener('click', placeImage);
-            adjustBtn.addEventListener('click', toggleControls);
+            adjustBtn.addEventListener('click', toggleAdjustControls);
             removeBtn.addEventListener('click', removeImage);
-            lockBtn.addEventListener('click', toggleLock);
+            lockBtnAdjust.addEventListener('click', toggleLock);
 
             // Slider event listeners
             scaleSlider.addEventListener('input', (e) => {
@@ -245,10 +290,31 @@
                 }
             });
 
-            rotateSlider.addEventListener('input', (e) => {
+            rotateXSlider.addEventListener('input', (e) => {
                 if (imagePlane && !isImageLocked) {
-                    currentRotation = parseFloat(e.target.value) * (Math.PI / 180);
+                    currentRotationX = parseFloat(e.target.value) * (Math.PI / 180);
                     updateImageTransform();
+                }
+            });
+
+            rotateYSlider.addEventListener('input', (e) => {
+                if (imagePlane && !isImageLocked) {
+                    currentRotationY = parseFloat(e.target.value) * (Math.PI / 180);
+                    updateImageTransform();
+                }
+            });
+
+            rotateZSlider.addEventListener('input', (e) => {
+                if (imagePlane && !isImageLocked) {
+                    currentRotationZ = parseFloat(e.target.value) * (Math.PI / 180);
+                    updateImageTransform();
+                }
+            });
+
+            opacitySlider.addEventListener('input', (e) => {
+                if (imagePlane && !isImageLocked && imagePlane.material) {
+                    currentOpacity = parseFloat(e.target.value) / 100;
+                    imagePlane.material.opacity = currentOpacity;
                 }
             });
 
@@ -370,7 +436,7 @@
             const material = new THREE.MeshBasicMaterial({
                 map: imageTexture,
                 transparent: true,
-                opacity: 1.0,
+                opacity: currentOpacity,
                 side: THREE.DoubleSide // Arka yüzeyi de göster
             });
 
@@ -387,8 +453,7 @@
 
             // Düzlemi yatay hale getir
             imagePlane.rotation.x = -Math.PI / 2;
-
-            // İlk pozisyon ve rotasyonu sakla (isteğe bağlı)
+                        // İlk pozisyon ve rotasyonu sakla (isteğe bağlı)
             imagePlane.initialPosition = new THREE.Vector3().copy(imagePlane.position);
             imagePlane.initialRotation = new THREE.Euler().copy(imagePlane.rotation);
 
@@ -400,31 +465,33 @@
             reticle.visible = false;
             isImagePlaced = true;
 
-            instructionsElement.textContent = 'Resim yerleştirildi. Boyut ve döndürme için "Boyut/Döndür" düğmesine tıklayın';
+            instructionsElement.textContent = 'Resim yerleştirildi. Ayarlar için "Ayarlar" düğmesine tıklayın';
 
             // Reset sliders
             scaleSlider.value = 100;
-            rotateSlider.value = 0;
+            rotateXSlider.value = 0;
+            rotateYSlider.value = 0;
+            rotateZSlider.value = 0;
+            opacitySlider.value = 100;
             currentScale = 1.0;
-            currentRotation = 0;
+            currentRotationX = 0;
+            currentRotationY = 0;
+            currentRotationZ = 0;
+            currentOpacity = 1.0;
         }
 
         function updateImageTransform() {
             if (!imagePlane || isImageLocked) return; // Eğer resim yoksa veya kilitliyse çık
 
-            // Mevcut pozisyon ve rotasyonu koru, sadece ölçeği ve Y ekseni rotasyonunu güncelle
+            // Ölçek ve döndürmeyi güncelle
             imagePlane.scale.set(currentScale, currentScale, currentScale);
-            imagePlane.rotation.y = currentRotation;
+            imagePlane.rotation.set(currentRotationX - Math.PI / 2, currentRotationY, currentRotationZ); // X ekseni düzeltmesi
         }
 
-        function toggleControls() {
-            if (!isImagePlaced || isImageLocked) return;
+        function toggleAdjustControls() {
+            if (!isImagePlaced) return;
 
-            if (controls.style.display === 'none' || controls.style.display === '') {
-                controls.style.display = 'block';
-            } else {
-                controls.style.display = 'none';
-            }
+            adjustControls.style.display = (adjustControls.style.display === 'none' || adjustControls.style.display === '') ? 'flex' : 'none';
         }
 
         function removeImage() {
@@ -435,7 +502,7 @@
                 isImageLocked = false;
 
                 adjustBtn.disabled = true;
-                controls.style.display = 'none';
+                adjustControls.style.display = 'none';
                 contextMenu.style.display = 'none';
                 instructionsElement.textContent = 'Resim kaldırıldı. Yeni bir resim yerleştirmek için "Resim Seç" düğmesine tıklayın';
 
@@ -446,20 +513,15 @@
 
         function toggleLock() {
             isImageLocked = !isImageLocked;
-            lockBtn.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
-
-            adjustBtn.disabled = isImageLocked;
-            controls.style.display = 'none'; // Kilitlendiğinde kontrolleri gizle
+            lockBtnAdjust.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
 
             instructionsElement.textContent = isImageLocked ?
-                'Resim kilitlendi. Kilidini açmak için resme tekrar tıklayın' :
-                'Resim kilidi açıldı. Boyutlandırma için "Boyut/Döndür" düğmesine tıklayın';
-
-            // Kilitlendiğinde veya açıldığında transform güncellemeyi tetiklemeyin
+                'Resim kilitlendi. Kilidini açmak için "Kilitle" düğmesine tekrar tıklayın' :
+                'Resim kilidi açıldı. Ayarları değiştirebilirsiniz';
         }
 
         function onScreenTap(event) {
-            if (!isImagePlaced || !imagePlane) return;
+            if (!isImagePlaced || !imagePlane || isImageLocked) return; // Kilitliyse context menü açma
 
             // Ekrandaki dokunma noktasını normalize edilmiş koordinatlara dönüştür
             const rect = renderer.domElement.getBoundingClientRect();
@@ -479,11 +541,11 @@
                 contextMenu.style.left = `${event.clientX}px`;
                 contextMenu.style.top = `${event.clientY}px`;
 
-                // Context menü butonlarını güncelle
-                lockBtn.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
-
                 // Olay yayılımını durdur
                 event.stopPropagation();
+            } else if (contextMenu.style.display === 'block') {
+                // Resim dışına tıklandıysa context menüyü kapat
+                contextMenu.style.display = 'none';
             }
         }
 
