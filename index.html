@@ -1,589 +1,281 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Resim Yerleştirme</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
+<!doctype html>
 
-        #ui-container {
-            position: fixed;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            z-index: 10;
-        }
 
-        .button-container {
-            background-color: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            border-radius: 10px;
-            display: flex;
-            gap: 10px;
-        }
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      padding: 1rem;
+      margin: 0;
+    }
 
-        button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 5px;
-            background-color: #4285f4;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
 
-        button:disabled {
-            background-color: #cccccc;
-        }
+    .radio-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 1rem;
+      padding: 0.5rem;
+    }
 
-        #image-input {
-            display: none;
-        }
+    .radio {
+      position: relative;
+      background: white;
+      border-radius: 12px;
+      padding: 0.5rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
 
-        #instructions {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 10px;
-            z-index: 10;
-            text-align: center;
-            max-width: 80%;
-        }
+    .radio:hover {
+      transform: scale(1.03);
+    }
 
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
+    .radio img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      border-radius: 8px;
+      margin: 0 auto;
+      display: block;
+    }
 
-        .loader {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
+    .radio p {
+      font-size: 14px;
+      margin: 0.5rem 0 0;
+    }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+    .favorite {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      font-size: 20px;
+      color: #999;
+      user-select: none;
+      background: white;
+      border-radius: 50%;
+      padding: 4px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.2);
+      transition: color 0.3s;
+    }
 
-        #contextMenu {
-            display: none;
-            position: fixed;
-            z-index: 100;
-            background-color: rgba(0, 0, 0, 0.8);
-            border-radius: 5px;
-            padding: 10px;
-        }
+    .favorite.favorited {
+      color: red;
+      text-shadow: 0 0 4px red;
+    }
 
-        #contextMenu button {
-            display: block;
-            width: 100%;
-            margin-bottom: 5px;
-            padding: 8px 15px;
-        }
+    #status {
+      margin-top: 1rem;
+      font-weight: bold;
+      font-size: 1rem;
+      color: #333;
+    }
 
-        #controls {
-            display: none;
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 10px;
-            z-index: 11;
-            color: white;
-            text-align: center;
-            flex-direction: column;
-            align-items: center;
-        }
+    audio {
+      width: 100%;
+      margin-top: 1rem;
+    }
 
-        #controls label {
-            display: block;
-            margin: 5px 0;
-        }
+    #filterButtons {
+      margin-bottom: 1rem;
+    }
 
-        #controls input[type="range"] {
-            width: 200px;
-        }
+    button {
+      padding: 6px 12px;
+      margin: 0 5px;
+      border: none;
+      border-radius: 6px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
 
-        #controls button {
-            margin-top: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div id="loading-screen">
-        <div class="loader"></div>
-        <p>AR özelliklerini yüklüyor...</p>
-        <p>Lütfen kamera izinlerini onaylayın</p>
-    </div>
+    button.active {
+      background: #f44336;
+    }
 
-    <div id="instructions">Bir resim seçmek için "Resim Seç" düğmesine tıklayın, sonra resmi yerleştirmek için bir düzlem belirleyin</div>
+    @media (max-width: 600px) {
+      .radio p {
+        font-size: 13px;
+      }
 
-    <div id="ui-container">
-        <div class="button-container">
-            <button id="select-image-btn">Resim Seç</button>
-            <button id="place-image-btn" disabled>Resmi Yerleştir</button>
-            <button id="adjust-btn" disabled>Ayarlar</button>
-        </div>
-    </div>
+      .favorite {
+        font-size: 20px;
+        top: 2px;
+        left: 2px;
+      }
+    }
+	.centered-top-container.sticky {
+  position: static !important;
+  top: auto !important;
+  z-index: 1 !important;
+  box-shadow: none !important;
+  background: none !important;
+}
 
-    <input type="file" id="image-input" accept="image/*">
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-    <div id="controls">
-        <label for="scale-slider">Boyut:</label>
-        <input type="range" id="scale-slider" min="10" max="200" value="100">
 
-        <label for="rotate-x-slider">Döndürme X:</label>
-        <input type="range" id="rotate-x-slider" min="0" max="360" value="0">
 
-        <label for="rotate-y-slider">Döndürme Y:</label>
-        <input type="range" id="rotate-y-slider" min="0" max="360" value="0">
+  <h1></h1>
 
-        <label for="rotate-z-slider">Döndürme Z:</label>
-        <input type="range" id="rotate-z-slider" min="0" max="360" value="0">
+  <div id="filterButtons">
+    <button id="showAll" class="active">Tüm Radyolar</button>
+    <button id="showFavorites">Favorilerim</button>
+  </div>
 
-        <label for="opacity-slider">Saydamlık:</label>
-        <input type="range" id="opacity-slider" min="0" max="100" value="100">
+  <div class="radio-list" id="radioList"></div>
+  <audio id="player" controls></audio>
+  <div id="status">Bir radyo seçin</div>
 
-        <button id="lock-btn-adjust">Kilitle</button>
-    </div>
+  <script>
+   const radios = [
+  { name: "Radyo Fenomen", stream: "https://live.radyofenomen.com/fenomen/128/icecast.audio", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-fenomen.jpg" },
+  { name: "Joy FM", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOY_FM128AAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-fm.jpg" },
+  { name: "Joy Türk", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOY_TURK128AAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-turk-dinle.jpg" },
+  { name: "Radyo Viva", stream: "https://radyoviva.radyotvonline.net/radyovivaaac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-viva.jpg" },
+  { name: "Alem FM", stream: "https://alemfm.radyotvonline.net/alemfmaac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/alem-fm.jpg" },
+  { name: "Kral FM", stream: "https://dygedge2.radyotvonline.net/kralfm/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/kral-fm-dinle.jpg" },
+  { name: "Power Türk FM", stream: "https://live.powerapp.com.tr/powerturk/abr/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/power-turk-dinle.png" },
+  { name: "Slow Türk", stream: "https://radyo.duhnet.tv/slowturk", logo: "https://www.canliradyodinle.fm/wp-content/uploads/slow-turk-dinle.jpg" },
+  { name: "Metro FM", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/METRO_FMAAC.aac", logo: "https://www.canliradyodinle.fm/wp-content/uploads/metro-fm.jpg" },
+  { name: "Radyo D", stream: "https://moondigitaledge2.radyotvonline.net/radyod/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/radyo-d-dinle.png" },
+  { name: "JoyTürk Akustik", stream: "https://playerservices.streamtheworld.com/api/livestream-redirect/JOYTURK_AKUSTIK128AAC.aac?/;stream.mp3", logo: "https://www.canliradyodinle.fm/wp-content/uploads/joy-turk-akustik.jpg" },
+ { name: "Kafa Radyo", stream: "https://moondigitaledge2.radyotvonline.net/kafaradyo/playlist.m3u8", logo: "https://www.canliradyodinle.fm/wp-content/uploads/kafa-radyo.jpg" },
+{name:"Super FM",stream:"https://playerservices.streamtheworld.com/api/livestream-redirect/SUPER_FM128AAC.aac?/;stream.mp3", logo:"https://www.canliradyodinle.fm/wp-content/uploads/super-fm-dinle.jpg"},
+{name:"RadyoSpor",stream:"https://moondigitaledge.radyotvonline.net/radyospor/playlist.m3u8", logo:"https://www.canliradyodinle.fm/wp-content/uploads/radyo-spor.jpg"}
+];
 
-    <div id="contextMenu">
-        <button id="remove-btn">Kaldır</button>
-    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    const radioList = document.getElementById("radioList");
+    const player = document.getElementById("player");
+    const status = document.getElementById("status");
+    const showAllBtn = document.getElementById("showAll");
+    const showFavBtn = document.getElementById("showFavorites");
 
-    <script>
-        // AR değişkenleri
-        let camera, scene, renderer;
-        let controller, reticle;
-        let hitTestSource = null;
-        let hitTestSourceRequested = false;
-        let selectedImage = null;
-        let imageTexture = null;
-        let imagePlane = null;
-        let isImagePlaced = false;
-        let isImageLocked = false;
-        let currentScale = 1.0;
-        let currentRotationX = 0;
-        let currentRotationY = 0;
-        let currentRotationZ = 0;
-        let currentOpacity = 1.0;
+    let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+    let showFavoritesOnly = false;
 
-        // UI Elementleri
-        const selectImageBtn = document.getElementById('select-image-btn');
-        const placeImageBtn = document.getElementById('place-image-btn');
-        const adjustBtn = document.getElementById('adjust-btn');
-        const imageInput = document.getElementById('image-input');
-        const instructionsElement = document.getElementById('instructions');
-        const loadingScreen = document.getElementById('loading-screen');
-        const contextMenu = document.getElementById('contextMenu');
-        const removeBtn = document.getElementById('remove-btn');
-        const adjustControls = document.getElementById('controls');
-        const scaleSlider = document.getElementById('scale-slider');
-        const rotateXSlider = document.getElementById('rotate-x-slider');
-        const rotateYSlider = document.getElementById('rotate-y-slider');
-        const rotateZSlider = document.getElementById('rotate-z-slider');
-        const opacitySlider = document.getElementById('opacity-slider');
-        const lockBtnAdjust = document.getElementById('lock-btn-adjust');
+    function updateRadioList() {
+      radioList.innerHTML = "";
+      const filteredRadios = showFavoritesOnly
+        ? radios.filter(r => favorites.includes(r.name))
+        : radios;
 
-        // Sayfa yüklendiğinde initi başlat
-        window.onload = init;
+      filteredRadios.forEach(radio => {
+        const div = document.createElement("div");
+        div.className = "radio";
+        div.innerHTML = `
+          <span class="favorite ${favorites.includes(radio.name) ? "favorited" : ""}" title="Favorilere ekle">♥</span>
+          <img src="${radio.logo}" alt="${radio.name}">
+          <p>${radio.name}</p>
+        `;
 
-        function init() {
-            // Scene oluştur
-            scene = new THREE.Scene();
+        div.querySelector(".favorite").onclick = (e) => {
+          e.stopPropagation();
+          toggleFavorite(radio.name);
+        };
 
-            // Camera oluştur
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+        div.onclick = () => {
+          localStorage.setItem("lastPlayedRadio", JSON.stringify(radio)); // 🔴 Kaydet
+          status.textContent = `${radio.name} - Bağlanıyor...`;
 
-            // Light oluştur
-            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-            light.position.set(0, 1, 0);
-            scene.add(light);
+          if (window.hls) {
+            window.hls.destroy();
+            window.hls = null;
+          }
 
-            // Renderer oluştur
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
-
-            // XR özelliklerini kontrol et
-            if ('xr' in navigator) {
-                navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-                    if (supported) {
-                        loadingScreen.style.display = 'none';
-                        setupAR();
-                    } else {
-                        loadingScreen.innerHTML = 'AR desteklenmiyor. Lütfen ARCore veya ARKit destekli bir cihaz kullanın.';
-                    }
-                });
-            } else {
-                loadingScreen.innerHTML = 'WebXR desteklenmiyor. Lütfen WebXR destekli bir tarayıcı kullanın.';
-            }
-
-            // Event Listeners
-            window.addEventListener('resize', onWindowResize);
-            selectImageBtn.addEventListener('click', () => imageInput.click());
-            imageInput.addEventListener('change', handleImageSelect);
-            placeImageBtn.addEventListener('click', placeImage);
-            adjustBtn.addEventListener('click', toggleAdjustControls);
-            removeBtn.addEventListener('click', removeImage);
-            lockBtnAdjust.addEventListener('click', toggleLock);
-
-            // Slider event listeners
-            scaleSlider.addEventListener('input', (e) => {
-                if (imagePlane && !isImageLocked) {
-                    currentScale = parseFloat(e.target.value) / 100;
-                    updateImageTransform();
-                }
+          if (Hls.isSupported() && radio.stream.endsWith(".m3u8")) {
+            const hls = new Hls();
+            hls.loadSource(radio.stream);
+            hls.attachMedia(player);
+            window.hls = hls;
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              player.play().then(() => {
+                status.textContent = `Şu an çalan: ${radio.name}`;
+              }).catch(() => {
+                status.textContent = `${radio.name} - Oynatma hatası!`;
+              });
             });
-
-            rotateXSlider.addEventListener('input', (e) => {
-                if (imagePlane && !isImageLocked) {
-                    currentRotationX = parseFloat(e.target.value) * (Math.PI / 180);
-                    updateImageTransform();
-                }
+            hls.on(Hls.Events.ERROR, () => {
+              status.textContent = `${radio.name} - Bağlantı hatası!`;
             });
-
-            rotateYSlider.addEventListener('input', (e) => {
-                if (imagePlane && !isImageLocked) {
-                    currentRotationY = parseFloat(e.target.value) * (Math.PI / 180);
-                    updateImageTransform();
-                }
+          } else {
+            player.src = radio.stream;
+            player.play().then(() => {
+              status.textContent = `Şu an çalan: ${radio.name}`;
+            }).catch(() => {
+              status.textContent = `${radio.name} - Bağlantı hatası!`;
             });
+          }
+        };
 
-            rotateZSlider.addEventListener('input', (e) => {
-                if (imagePlane && !isImageLocked) {
-                    currentRotationZ = parseFloat(e.target.value) * (Math.PI / 180);
-                    updateImageTransform();
-                }
+        radioList.appendChild(div);
+      });
+    }
+
+    function toggleFavorite(name) {
+      if (favorites.includes(name)) {
+        favorites = favorites.filter(f => f !== name);
+      } else {
+        favorites.push(name);
+      }
+      localStorage.setItem("favorites", JSON.stringify(favorites));
+      updateRadioList();
+    }
+
+    showAllBtn.onclick = () => {
+      showFavoritesOnly = false;
+      showAllBtn.classList.add("active");
+      showFavBtn.classList.remove("active");
+      updateRadioList();
+    };
+
+    showFavBtn.onclick = () => {
+      showFavoritesOnly = true;
+      showAllBtn.classList.remove("active");
+      showFavBtn.classList.add("active");
+      updateRadioList();
+    };
+
+    updateRadioList();
+
+    // 🔁 Sayfa yüklendiğinde son dinlenen radyoyu çal
+    const lastPlayed = JSON.parse(localStorage.getItem("lastPlayedRadio"));
+    if (lastPlayed) {
+      const radio = radios.find(r => r.name === lastPlayed.name);
+      if (radio) {
+        setTimeout(() => {
+          if (Hls.isSupported() && radio.stream.endsWith(".m3u8")) {
+            const hls = new Hls();
+            hls.loadSource(radio.stream);
+            hls.attachMedia(player);
+            window.hls = hls;
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              player.play().then(() => {
+                status.textContent = `Şu an çalan: ${radio.name}`;
+              }).catch(() => {
+                status.textContent = `${radio.name} - Oynatma hatası!`;
+              });
             });
-
-            opacitySlider.addEventListener('input', (e) => {
-                if (imagePlane && !isImageLocked && imagePlane.material) {
-                    currentOpacity = parseFloat(e.target.value) / 100;
-                    imagePlane.material.opacity = currentOpacity;
-                }
+          } else {
+            player.src = radio.stream;
+            player.play().then(() => {
+              status.textContent = `Şu an çalan: ${radio.name}`;
+            }).catch(() => {
+              status.textContent = `${radio.name} - Bağlantı hatası!`;
             });
+          }
+        }, 500); // Yüklenmesini bekle
+      }
+    }
+  </script>
 
-            // Context menu için event listener
-            document.addEventListener('click', function(event) {
-                // Context menu dışında bir yere tıklandığında gizle
-                if (contextMenu.style.display === 'block') {
-                    contextMenu.style.display = 'none';
-                }
-            });
-
-            // Ekrana tıklama olay dinleyicisi
-            renderer.domElement.addEventListener('click', onScreenTap);
-        }
-
-        function setupAR() {
-            // AR Butonunu ekle
-            const arButton = document.createElement('button');
-            arButton.id = 'ar-button';
-            arButton.textContent = 'AR Başlat';
-            arButton.style.position = 'fixed';
-            arButton.style.top = '20px';
-            arButton.style.left = '50%';
-            arButton.style.transform = 'translateX(-50%)';
-            arButton.style.padding = '12px 20px';
-            arButton.style.border = 'none';
-            arButton.style.borderRadius = '5px';
-            arButton.style.backgroundColor = '#4285f4';
-            arButton.style.color = 'white';
-            arButton.style.fontWeight = 'bold';
-            arButton.style.zIndex = '999';
-            document.body.appendChild(arButton);
-
-            arButton.addEventListener('click', () => {
-                navigator.xr.requestSession('immersive-ar', {
-                    requiredFeatures: ['hit-test', 'dom-overlay'],
-                    domOverlay: { root: document.body }
-                }).then(onSessionStarted);
-            });
-
-            // Retikül (Hedef işareti) oluştur
-            reticle = new THREE.Mesh(
-                new THREE.RingGeometry(0.03, 0.04, 32).rotateX(-Math.PI / 2),
-                new THREE.MeshBasicMaterial({ color: 0xffffff })
-            );
-            reticle.matrixAutoUpdate = false;
-            reticle.visible = false;
-            scene.add(reticle);
-
-            // Renderer XR loop
-            renderer.setAnimationLoop(render);
-        }
-
-        function onSessionStarted(session) {
-            // AR Butonunu kaldır
-            document.getElementById('ar-button').style.display = 'none';
-
-            session.addEventListener('end', () => {
-                // AR session sonlandığında
-                document.getElementById('ar-button').style.display = 'block';
-            });
-
-            renderer.xr.setReferenceSpaceType('local');
-            renderer.xr.setSession(session);
-
-            // Controller oluştur
-            controller = renderer.xr.getController(0);
-            controller.addEventListener('select', onSelect);
-            scene.add(controller);
-
-            // Hit-test için session özelliklerini ayarla
-            session.requestReferenceSpace('viewer').then((referenceSpace) => {
-                session.requestHitTestSource({ space: referenceSpace }).then((source) => {
-                    hitTestSource = source;
-                });
-            });
-
-            session.addEventListener('end', () => {
-                hitTestSourceRequested = false;
-                hitTestSource = null;
-            });
-
-            hitTestSourceRequested = true;
-        }
-
-        function handleImageSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = new Image();
-                    img.onload = function() {
-                        selectedImage = img;
-                        imageTexture = new THREE.TextureLoader().load(e.target.result);
-                        placeImageBtn.disabled = false;
-                        instructionsElement.textContent = 'Şimdi resmi yerleştirmek için "Resmi Yerleştir" düğmesine tıklayın';
-                    };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function placeImage() {
-            if (!selectedImage || !reticle.visible) return;
-
-            // Önceki resmi temizle
-            if (imagePlane) {
-                scene.remove(imagePlane);
-                imagePlane = null;
-            }
-
-            // Resim düzlemi oluştur
-            const aspectRatio = selectedImage.width / selectedImage.height;
-            const width = 1; // 1 metre genişliğinde
-            const height = width / aspectRatio;
-
-            const geometry = new THREE.PlaneGeometry(width, height);
-            const material = new THREE.MeshBasicMaterial({
-                map: imageTexture,
-                transparent: true,
-                opacity: currentOpacity,
-                side: THREE.DoubleSide // Arka yüzeyi de göster
-            });
-
-            imagePlane = new THREE.Mesh(geometry, material);
-
-            // Resmi düzlemin üzerine yerleştir (zemine paralel)
-            const matrix = new THREE.Matrix4().fromArray(reticle.matrix.elements);
-            const position = new THREE.Vector3();
-            const rotation = new THREE.Quaternion();
-            const scale = new THREE.Vector3();
-            matrix.decompose(position, rotation, scale);
-
-            imagePlane.position.copy(position);
-            imagePlane.rotation.copy(new THREE.Euler().setFromRotationMatrix(matrix));
-            imagePlane.rotation.x = -Math.PI / 2; // Başlangıçta yere paralel yap
-
-            // İlk pozisyon ve rotasyonu kaydet
-            imagePlane.initialPosition = new THREE.Vector3().copy(imagePlane.position);
-            imagePlane.initialRotation = new THREE.Euler().copy(imagePlane.rotation);
-
-            scene.add(imagePlane);
-
-            // UI güncellemeleri
-            placeImageBtn.disabled = false;
-            adjustBtn.disabled = false;
-            reticle.visible = false;
-            isImagePlaced = true;
-
-            instructionsElement.textContent = 'Resim yerleştirildi. Ayarlar için "Ayarlar" düğmesine tıklayın';
-
-            // Reset sliders
-            scaleSlider.value = 100;
-            rotateXSlider.value = 0;
-            rotateYSlider.value = 0;
-            rotateZSlider.value = 0;
-            opacitySlider.value = 100;
-            currentScale = 1.0;
-            currentRotationX = 0;
-            currentRotationY = 0;
-            currentRotationZ = 0;
-            currentOpacity = 1.0;
-        }
-
-        function updateImageTransform() {
-            if (!imagePlane || isImageLocked) return; // Eğer resim yoksa veya kilitliyse çık
-
-            // Ölçek ve döndürmeyi güncelle
-            imagePlane.scale.set(currentScale, currentScale, currentScale);
-            imagePlane.rotation.set(currentRotationX - Math.PI / 2, currentRotationY, currentRotationZ); // X ekseni düzeltmesi
-        }
-
-        function toggleAdjustControls() {
-            if (!isImagePlaced) return;
-
-            adjustControls.style.display = (adjustControls.style.display === 'none' || adjustControls.style.display === '') ? 'flex' : 'none';
-        }
-
-        function removeImage() {
-            if (imagePlane) {
-                scene.remove(imagePlane);
-                imagePlane = null;
-                isImagePlaced = false;
-                isImageLocked = false;
-
-                adjustBtn.disabled = true;
-                adjustControls.style.display = 'none';
-                contextMenu.style.display = 'none';
-                instructionsElement.textContent = 'Resim kaldırıldı. Yeni bir resim yerleştirmek için "Resim Seç" düğmesine tıklayın';
-
-                // Reticle'ı tekrar göster
-                reticle.visible = true;
-            }
-        }
-
-        function toggleLock() {
-            isImageLocked = !isImageLocked;
-            lockBtnAdjust.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
-
-            adjustBtn.disabled = isImageLocked;
-            adjustControls.style.display = isImageLocked ? 'none' : 'flex';
-
-            if (imagePlane) {
-                imagePlane.matrixAutoUpdate = !isImageLocked; // Kilitliyse otomatik güncellemeyi kapat
-            }
-
-            instructionsElement.textContent = isImageLocked ?
-                'Resim kilitlendi. Kilidini açmak için "Kilitle" düğmesine tekrar tıklayın' :
-                'Resim kilidi açıldı. Ayarları değiştirebilirsiniz';
-        }
-
-        function onScreenTap(event) {
-            if (!isImagePlaced || !imagePlane || isImageLocked) return; // Kilitliyse context menü açma
-
-            // Ekrandaki dokunma noktasını normalize edilmiş koordinatlara dönüştür
-            const rect = renderer.domElement.getBoundingClientRect();
-            const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-            // Raycaster oluştur
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
-
-            // Resim düzlemi ile kesişme kontrol et
-            const intersects = raycaster.intersectObject(imagePlane);
-
-            if (intersects.length > 0) {
-                // Resme tıklandı, context menüyü göster
-                contextMenu.style.display = 'block';
-                contextMenu.style.left = `${event.clientX}px`;
-                contextMenu.style.top = `${event.clientY}px`;
-
-                // Olay yayılımını durdur
-                event.stopPropagation();
-            } else if (contextMenu.style.display === 'block') {
-                // Resim dışına tıklandıysa context menüyü kapat
-                contextMenu.style.display = 'none';
-            }
-        }
-
-        function onSelect() {
-            if (reticle.visible) {
-                placeImage();
-            }
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function render(timestamp, frame) {
-            if (frame) {
-                if (hitTestSourceRequested === false) return;
-
-                const referenceSpace = renderer.xr.getReferenceSpace();
-                const session = renderer.xr.getSession();
-
-                if (hitTestSource && !isImagePlaced) {
-                    const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-                    if (hitTestResults.length > 0) {
-                        const hit = hitTestResults[0];
-                        const pose = hit.getPose(referenceSpace);
-
-                        if (pose) {
-                            reticle.visible = true;
-                            reticle.matrix.fromArray(pose.transform.matrix);
-                        }
-                    } else {
-                        reticle.visible = false;
-                    }
-                }
-
-                if (imagePlane && isImageLocked) {
-                    // Kilitliyse, kaydedilen ilk pozisyon ve rotasyonu sürekli uygula
-                    if (imagePlane.initialPosition && imagePlane.initialRotation) {
-                        imagePlane.position.copy(imagePlane.initialPosition);
-                        imagePlane.rotation.copy(imagePlane.initialRotation);
-                        imagePlane.matrixAutoUpdate = false; // Otomatik güncellemeyi kapalı tut
-                        imagePlane.updateMatrix(); // Matrisi güncelle
-                    }
-                }
-
-                renderer.render(scene, camera);
-            } else {
-                renderer.render(scene, camera); // AR oturumu yoksa normal render
-            }
-        }
-    </script>
-</body>
-</html>
-
+</!doctype>
