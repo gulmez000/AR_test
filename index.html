@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR Resim Yerleştirici</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background-color: #000; }
+        #ar-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+        canvas { display: block; } /* Prevent scrollbars */
+
+        /* UI Elements */
+        #ui-container, #interaction-container, #manipulation-container {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none; /* Allow clicks/touches to pass through container */
+        }
+        #interaction-container { bottom: 90px; } /* Position above main controls */
+        #manipulation-container { bottom: 160px; } /* Position above interaction controls */
+
+        .button-group {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+            pointer-events: auto; /* Enable clicks/touches on buttons */
+        }
+
+        button, input[type="range"] {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4285f4;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:disabled { background-color: #cccccc; cursor: default; }
+        button.danger { background-color: #db4437; }
+        button.warning { background-color: #f4b400; }
+        button.success { background-color: #0f9d58; }
+
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 10px;
+            z-index: 10;
+            text-align: center;
+            max-width: 90%;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        #image-input { display: none; }
+
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); color: white;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 100; text-align: center; padding: 20px;
+        }
+        .loader {
+            border: 5px solid #f3f3f3; border-top: 5px solid #3498db;
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Sliders */
+        .slider-container { display: flex; align-items: center; gap: 5px; color: white; }
+        .slider-container label { font-size: 12px; }
+        input[type="range"] { flex-grow: 1; height: 8px; padding: 0; background-color: #555; -webkit-appearance: none; appearance: none; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: #4285f4; border-radius: 50%; cursor: pointer; }
+        input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; background: #4285f4; border-radius: 50%; cursor: pointer; border: none; }
+
+        /* Hide elements initially */
+        #interaction-container, #manipulation-container { display: none; }
+
+    </style>
+</head>
+<body>
+    <div id="ar-container"></div> <!-- THREE.js canvas will be appended here -->
+
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p>AR Ortamı Başlatılıyor...</p>
+        <p>Lütfen kamera iznini onaylayın ve AR oturumunu başlatın.</p>
+    </div>
+
+    <div id="instructions">Bir yüzey algılanmasını bekleyin...</div>
+
+    <!-- Main Controls -->
+    <div id="ui-container">
+        <div class="button-group">
+            <button id="select-image-btn">Resim Seç</button>
+            <button id="place-image-btn" disabled>Yerleştir</button>
+            <button id="cancel-placement-btn" disabled>İptal</button>
+        </div>
+    </div>
+
+    <!-- Manipulation Controls (for Preview & Interaction) -->
+    <div id="manipulation-container">
+         <div class="button-group">
+            <div class="slider-container">
+                <label for="scale-slider">Boyut:</label>
+                <input type="range" id="scale-slider" min="0.1" max="3" step="0.05" value="1">
+            </div>
+            <div class="slider-container">
+                 <label for="rotate-slider">Döndür:</label>
+                <input type="range" id="rotate-slider" min="-180" max="180" step="5" value="0">
+             </div>
+         </div>
+    </div>
+
+    <!-- Interaction Controls (after placing and selecting) -->
+    <div id="interaction-container">
+        <div class="button-group">
+            <button id="remove-btn" class="danger">Kaldır</button>
+            <button id="edit-btn">Düzenle</button> <!-- To show manipulation controls again -->
+            <button id="lock-btn" class="warning">Kilitle</button>
+        </div>
+    </div>
+
+    <input type="file" id="image-input" accept="image/*">
+
+    <!-- Use Import Maps for THREE.js and WebXR -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+
+        // --- Global Variables ---
+        let camera, scene, renderer;
+        let controller;
+        let reticle; // Görsel hedef göstergesi
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
+        let currentSession = null;
+
+        // Image handling
+        let previewImage = null; // Seçilen ama henüz yerleştirilmeyen resim { texture, mesh, aspectRatio, currentScale, currentRotationY }
+        let placedImages = []; // Yerleştirilmiş resimler: { id, mesh, anchor, scale, rotationY, locked }
+        let selectedPlacedImage = null; // Etkileşim için seçilen yerleştirilmiş resim
+
+        // State Management
+        const STATE = {
+            SCANNING: 'SCANNING',           // Looking for surfaces
+            PREVIEWING: 'PREVIEWING',       // Image selected, showing preview on reticle
+            PLACED_IDLE: 'PLACED_IDLE',     // Image(s) placed, waiting for interaction
+            INTERACTING: 'INTERACTING',     // A placed image is selected
+            MANIPULATING: 'MANIPULATING'    // Actively scaling/rotating a placed image
+        };
+        let currentState = STATE.SCANNING;
+
+        // UI Elements
+        const loadingScreen = document.getElementById('loading-screen');
+        const instructionsElement = document.getElementById('instructions');
+        const selectImageBtn = document.getElementById('select-image-btn');
+        const placeImageBtn = document.getElementById('place-image-btn');
+        const cancelPlacementBtn = document.getElementById('cancel-placement-btn');
+        const imageInput = document.getElementById('image-input');
+        const manipulationContainer = document.getElementById('manipulation-container');
+        const scaleSlider = document.getElementById('scale-slider');
+        const rotateSlider = document.getElementById('rotate-slider');
+        const interactionContainer = document.getElementById('interaction-container');
+        const removeBtn = document.getElementById('remove-btn');
+        const editBtn = document.getElementById('edit-btn');
+        const lockBtn = document.getElementById('lock-btn');
+        const arContainer = document.getElementById('ar-container');
+
+        // --- Initialization ---
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 40);
+
+            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3); // Increased intensity
+            light.position.set(0.5, 1, 0.25);
+            scene.add(light);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1); // Added ambient light
+             scene.add(ambientLight);
+
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            arContainer.appendChild(renderer.domElement);
+
+            // AR Button Setup
+            const arButton = ARButton.createButton(renderer, {
+                requiredFeatures: ['hit-test', 'anchors', 'dom-overlay'],
+                domOverlay: { root: document.body }
+            });
+            arButton.style.zIndex = "999"; // Ensure button is on top
+            document.body.appendChild(arButton);
+
+            // Hide loading screen slightly after AR button is shown
+            // (actual hiding happens on session start)
+             arButton.addEventListener('click', () => {
+                 setTimeout(() => {
+                     if (!currentSession) loadingScreen.style.display = 'block'; // Show again if session didn't start
+                 }, 1000); // Give some time for session request
+             });
+
+
+            // Controller for input (tapping)
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect); // 'select' is the standard XR input event
+            scene.add(controller);
+
+            // Reticle (Visual indicator for hit testing)
+            reticle = new THREE.Mesh(
+                new THREE.RingGeometry(0.05, 0.07, 32).rotateX(-Math.PI / 2), // Slightly larger
+                new THREE.MeshBasicMaterial({ color: 0x00ff00, opacity: 0.7, transparent: true }) // Green, slightly transparent
+            );
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            selectImageBtn.addEventListener('click', () => imageInput.click());
+            imageInput.addEventListener('change', handleImageSelect);
+            placeImageBtn.addEventListener('click', placeImage);
+            cancelPlacementBtn.addEventListener('click', cancelPlacement);
+            scaleSlider.addEventListener('input', handleManipulation);
+            rotateSlider.addEventListener('input', handleManipulation);
+            removeBtn.addEventListener('click', handleRemove);
+            editBtn.addEventListener('click', handleEdit);
+            lockBtn.addEventListener('click', handleLock);
+
+            // Initial UI state
+            updateUI();
+
+            // Start Render Loop
+            renderer.setAnimationLoop(render);
+        }
+
+        function onSessionStarted(session) {
+            console.log("AR Session Started");
+            loadingScreen.style.display = 'none'; // Hide loading screen
+            currentSession = session;
+
+            session.addEventListener('end', onSessionEnded);
+
+            // Request reference space
+            session.requestReferenceSpace('local').then((refSpace) => {
+                // Request hit test source
+                session.requestHitTestSource({ space: refSpace }).then((source) => {
+                    hitTestSource = source;
+                    console.log("Hit Test Source obtained");
+                }).catch(err => console.error("Failed to get Hit Test Source:", err));
+            }).catch(err => console.error("Failed to get Reference Space:", err));
+
+             // Check for Anchors support after session start (though requested)
+             if (!session.enabledFeatures?.includes('anchors')) {
+                 console.warn("Anchors feature might not be fully supported by the session.");
+                 // Potentially show a warning to the user
+             }
+
+
+            hitTestSourceRequested = true;
+            currentState = STATE.SCANNING;
+            updateUI();
+        }
+
+        function onSessionEnded() {
+            console.log("AR Session Ended");
+            loadingScreen.style.display = 'block'; // Show loading screen again
+            loadingScreen.querySelector('p').textContent = "AR Oturumu Sonlandı. Yeniden Başlatın.";
+            loadingScreen.querySelector('.loader').style.display = 'none';
+
+            hitTestSourceRequested = false;
+            hitTestSource = null;
+            currentSession = null;
+
+            // Clean up scene from previous session
+            cancelPlacement(); // Remove preview if any
+            placedImages.forEach(img => scene.remove(img.mesh)); // Remove placed meshes
+            placedImages = [];
+            selectedPlacedImage = null;
+            reticle.visible = false;
+
+            currentState = STATE.SCANNING; // Reset state
+            updateUI(); // Reset UI
+
+            // Reset AR Button state if needed (ARButton usually handles this)
+        }
+
+        // --- Event Handlers ---
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Cancel any previous preview
+                        cancelPlacement();
+
+                        const texture = new THREE.TextureLoader().load(e.target.result);
+                        texture.colorSpace = THREE.SRGBColorSpace; // Important for correct color display
+                        const aspectRatio = img.width / img.height;
+                        const geometry = new THREE.PlaneGeometry(1, 1 / aspectRatio); // Start with base size 1 meter width
+                        const material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            transparent: true,
+                            opacity: 0.85, // Slightly transparent for preview
+                            side: THREE.DoubleSide // See back if rotated past 90deg
+                        });
+
+                        const mesh = new THREE.Mesh(geometry, material);
+                        mesh.visible = false; // Initially hidden, shown with reticle
+                        mesh.matrixAutoUpdate = false; // We'll update matrix manually
+
+                        previewImage = {
+                            texture: texture,
+                            mesh: mesh,
+                            aspectRatio: aspectRatio,
+                            currentScale: 1.0,
+                            currentRotationY: 0 // in degrees
+                        };
+
+                        scene.add(previewImage.mesh);
+                        currentState = STATE.PREVIEWING;
+                        resetManipulationControls(); // Reset sliders to default for new image
+                        updateUI();
+                    };
+                    img.onerror = () => {
+                         console.error("Görsel yüklenirken hata oluştu.");
+                         alert("Seçilen görsel yüklenemedi. Lütfen farklı bir dosya deneyin.");
+                         currentState = STATE.SCANNING;
+                         updateUI();
+                    };
+                    img.src = e.target.result;
+                };
+                 reader.onerror = () => {
+                    console.error("Dosya okunurken hata oluştu.");
+                    alert("Dosya okunurken bir hata oluştu.");
+                    currentState = STATE.SCANNING;
+                    updateUI();
+                 };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function cancelPlacement() {
+            if (previewImage) {
+                scene.remove(previewImage.mesh);
+                previewImage.texture.dispose();
+                previewImage.mesh.geometry.dispose();
+                previewImage.mesh.material.dispose();
+                previewImage = null;
+            }
+            // If interacting/manipulating, go back to placed idle
+            if (currentState === STATE.INTERACTING || currentState === STATE.MANIPULATING) {
+                selectedPlacedImage = null;
+                 currentState = STATE.PLACED_IDLE;
+            } else {
+                 currentState = placedImages.length > 0 ? STATE.PLACED_IDLE : STATE.SCANNING;
+            }
+
+            updateUI();
+        }
+
+        function placeImage() {
+            if (!previewImage || !reticle.visible) return;
+
+             // Use the reticle's current matrix for the anchor pose
+             const anchorPose = new XRRigidTransform(
+                 { x: reticle.position.x, y: reticle.position.y, z: reticle.position.z },
+                 { x: reticle.quaternion.x, y: reticle.quaternion.y, z: reticle.quaternion.z, w: reticle.quaternion.w }
+             );
+
+
+            // --- Create Anchor ---
+            currentSession.requestReferenceSpace('local').then(refSpace => {
+                 currentSession.requestAnimationFrame((time, frame) => { // Use the frame from rAF
+                    frame.createAnchor(anchorPose, refSpace).then(
+                        (anchor) => {
+                            console.log("Anchor created successfully at", anchorPose.position);
+
+                            // Create the final mesh (less transparent)
+                            const geometry = new THREE.PlaneGeometry(1, 1 / previewImage.aspectRatio); // Base size before scaling
+                            const material = new THREE.MeshLambertMaterial({ // Use Lambert for lighting interaction
+                                map: previewImage.texture.clone(), // Clone texture if needed elsewhere
+                                transparent: false, // Make it opaque
+                                side: THREE.DoubleSide,
+                                color: 0xffffff // Ensure full white base color
+                            });
+
+
+                            const finalMesh = new THREE.Mesh(geometry, material);
+                             finalMesh.userData.isPlacedImage = true; // Flag for raycasting
+                             finalMesh.userData.id = THREE.MathUtils.generateUUID(); // Unique ID
+
+                             // Apply initial scale and rotation from preview
+                            finalMesh.scale.set(previewImage.currentScale, previewImage.currentScale, previewImage.currentScale);
+                             finalMesh.rotation.y = THREE.MathUtils.degToRad(previewImage.currentRotationY);
+
+
+                            // Store placed image data
+                            const placedImageData = {
+                                id: finalMesh.userData.id,
+                                mesh: finalMesh,
+                                anchor: anchor,
+                                scale: previewImage.currentScale, // Store initial scale
+                                rotationY: previewImage.currentRotationY, // Store initial rotation (degrees)
+                                locked: false
+                            };
+                            placedImages.push(placedImageData);
+                            scene.add(finalMesh); // Add final mesh to scene
+
+                            // Clean up preview
+                            scene.remove(previewImage.mesh);
+                            // Don't dispose texture immediately if cloned, let GC handle preview texture.
+                            previewImage.mesh.geometry.dispose();
+                            previewImage.mesh.material.dispose();
+                            previewImage = null;
+
+                            currentState = STATE.PLACED_IDLE;
+                            updateUI();
+
+                        },
+                        (error) => {
+                            console.error("Could not create anchor: ", error);
+                            alert("Hata: Resim bu yüzeye sabitlenemedi. Lütfen tekrar deneyin.");
+                            // Revert state if needed, maybe back to previewing?
+                            currentState = STATE.PREVIEWING;
+                            updateUI();
+                        }
+                    );
+                });
+             }).catch(err => console.error("Failed to get refSpace for anchor:", err));
+        }
+
+
+         // --- Interaction Logic ---
+         function onSelect(event) {
+             // If in preview mode, place the image
+             if (currentState === STATE.PREVIEWING && reticle.visible) {
+                 placeImage();
+                 return; // Don't try to select placed images immediately after placing
+             }
+
+             // If idle with placed images, try to select one
+             if (currentState === STATE.PLACED_IDLE || currentState === STATE.INTERACTING || currentState === STATE.MANIPULATING) {
+                 const controllerPosition = controller.position; // Or use event.inputSource.targetRaySpace if available
+                 const raycaster = new THREE.Raycaster();
+                 // Set raycaster from controller position/direction (simplified here, might need proper ray direction)
+                 // A better way is from screen tap coords if using touch:
+                 // const touchPos = { x: (event.clientX / window.innerWidth) * 2 - 1, y: -(event.clientY / window.innerHeight) * 2 + 1 };
+                 // raycaster.setFromCamera(touchPos, camera);
+
+                 // Using controller direction (less precise for tapping usually)
+                 const tempMatrix = new THREE.Matrix4();
+                 tempMatrix.identity().extractRotation(controller.matrixWorld); // Get controller rotation
+                 raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld); // Set origin to controller pos
+                 raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix); // Set direction forward from controller
+
+                 const intersects = raycaster.intersectObjects(placedImages.map(p => p.mesh));
+
+                 if (intersects.length > 0) {
+                     const intersectedObject = intersects[0].object;
+                     // Find the corresponding placedImage data
+                     const newlySelected = placedImages.find(p => p.mesh === intersectedObject);
+
+                     if (newlySelected) {
+                         // Deselect previous if different
+                         if (selectedPlacedImage && selectedPlacedImage.id !== newlySelected.id) {
+                             deselectPlacedImage();
+                         }
+
+                         selectedPlacedImage = newlySelected;
+                         highlightSelection(selectedPlacedImage.mesh, true); // Highlight
+                         currentState = STATE.INTERACTING;
+                         updateUI();
+                     } else {
+                         // Clicked on something else or empty space
+                          if (currentState === STATE.INTERACTING || currentState === STATE.MANIPULATING) {
+                               deselectPlacedImage();
+                               currentState = STATE.PLACED_IDLE;
+                               updateUI();
+                           }
+                     }
+
+                 } else {
+                     // Clicked on empty space, deselect if needed
+                     if (currentState === STATE.INTERACTING || currentState === STATE.MANIPULATING) {
+                         deselectPlacedImage();
+                         currentState = STATE.PLACED_IDLE;
+                         updateUI();
+                     }
+                 }
+             }
+         }
+
+
+        function deselectPlacedImage() {
+             if (selectedPlacedImage) {
+                 highlightSelection(selectedPlacedImage.mesh, false); // Remove highlight
+             }
+             selectedPlacedImage = null;
+             currentState = STATE.PLACED_IDLE;
+             updateUI();
+         }
+
+        function highlightSelection(mesh, selected) {
+            // Simple highlight: change material color or add an outline
+            if (!mesh || !mesh.material) return;
+
+             if (selected) {
+                 // Option 1: Change color slightly (if Lambert/Standard material)
+                 if (mesh.material.color) {
+                      mesh.userData.originalColor = mesh.material.color.clone();
+                      mesh.material.color.set(0xaaaa00); // Yellow tint
+                 }
+                 // Option 2: Add an outline (more complex, requires EffectComposer or specific shaders)
+                 // Option 3: Add a simple wireframe overlay
+                 if (!mesh.userData.wireframe) {
+                    const wireframeGeo = new THREE.WireframeGeometry(mesh.geometry);
+                    const wireframeMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
+                    mesh.userData.wireframe = new THREE.LineSegments(wireframeGeo, wireframeMat);
+                    mesh.add(mesh.userData.wireframe); // Add wireframe as child
+                 }
+                 mesh.userData.wireframe.visible = true;
+
+             } else {
+                 // Restore original state
+                 if (mesh.userData.originalColor && mesh.material.color) {
+                     mesh.material.color.copy(mesh.userData.originalColor);
+                     delete mesh.userData.originalColor;
+                 }
+                 if (mesh.userData.wireframe) {
+                     mesh.userData.wireframe.visible = false;
+                 }
+             }
+             if(mesh.material.needsUpdate) mesh.material.needsUpdate = true;
+         }
+
+
+        // --- Manipulation & Interaction Button Handlers ---
+
+        function handleManipulation() {
+            const scaleValue = parseFloat(scaleSlider.value);
+            const rotateValue = parseFloat(rotateSlider.value); // Degrees
+
+            if (currentState === STATE.PREVIEWING && previewImage) {
+                previewImage.currentScale = scaleValue;
+                previewImage.currentRotationY = rotateValue;
+                // Update the preview mesh's matrix directly in the render loop based on these values
+            } else if (currentState === STATE.MANIPULATING && selectedPlacedImage && !selectedPlacedImage.locked) {
+                selectedPlacedImage.scale = scaleValue;
+                selectedPlacedImage.rotationY = rotateValue;
+                // Update the placed mesh's transform directly
+                selectedPlacedImage.mesh.scale.set(scaleValue, scaleValue, scaleValue);
+                selectedPlacedImage.mesh.rotation.y = THREE.MathUtils.degToRad(rotateValue);
+            }
+        }
+
+        function handleRemove() {
+            if (!selectedPlacedImage) return;
+
+            // Remove anchor (important!) - The API for removing anchors is not standard/guaranteed.
+            // We primarily stop using it. The browser *might* garbage collect unreferenced anchors.
+             if (selectedPlacedImage.anchor && typeof selectedPlacedImage.anchor.delete === 'function') {
+                 try {
+                     selectedPlacedImage.anchor.delete(); // Try to call delete if it exists
+                     console.log("Anchor deleted (API call attempted).");
+                 } catch (e) {
+                     console.warn("Anchor delete() method not available or failed:", e);
+                 }
+             } else {
+                console.log("Anchor not removed (no delete method or anchor missing). Will stop tracking.");
+             }
+
+
+            scene.remove(selectedPlacedImage.mesh);
+             // Dispose resources
+             if (selectedPlacedImage.mesh.material.map) selectedPlacedImage.mesh.material.map.dispose();
+             selectedPlacedImage.mesh.geometry.dispose();
+             selectedPlacedImage.mesh.material.dispose();
+             if (selectedPlacedImage.mesh.userData.wireframe) { // Clean up wireframe if used
+                 selectedPlacedImage.mesh.userData.wireframe.geometry.dispose();
+                 selectedPlacedImage.mesh.userData.wireframe.material.dispose();
+             }
+
+
+            // Remove from array
+            placedImages = placedImages.filter(img => img.id !== selectedPlacedImage.id);
+            selectedPlacedImage = null;
+            currentState = placedImages.length > 0 ? STATE.PLACED_IDLE : STATE.SCANNING;
+            updateUI();
+        }
+
+        function handleEdit() {
+            if (currentState === STATE.INTERACTING && selectedPlacedImage && !selectedPlacedImage.locked) {
+                currentState = STATE.MANIPULATING;
+                // Populate sliders with current values
+                scaleSlider.value = selectedPlacedImage.scale;
+                rotateSlider.value = selectedPlacedImage.rotationY;
+                updateUI();
+            }
+        }
+
+        function handleLock() {
+            if (selectedPlacedImage) {
+                selectedPlacedImage.locked = !selectedPlacedImage.locked;
+                 // Maybe add visual cue for locked state (e.g., change highlight color or icon)
+                 if (selectedPlacedImage.locked) {
+                     highlightSelection(selectedPlacedImage.mesh, false); // Remove edit highlight
+                     // Add a locked indicator? Maybe change wireframe color?
+                      if (selectedPlacedImage.mesh.userData.wireframe) {
+                          selectedPlacedImage.mesh.userData.wireframe.material.color.set(0xff0000); // Red wireframe for locked
+                          selectedPlacedImage.mesh.userData.wireframe.visible = true;
+                      }
+                      if(currentState === STATE.MANIPULATING) { // If manipulating, exit manipulation
+                         currentState = STATE.INTERACTING;
+                      }
+
+                 } else {
+                    // Unlock: restore normal interaction highlight
+                    if (selectedPlacedImage.mesh.userData.wireframe) {
+                        selectedPlacedImage.mesh.userData.wireframe.material.color.set(0xffff00); // Back to yellow
+                        selectedPlacedImage.mesh.userData.wireframe.visible = true; // Ensure it's visible if interacting
+                    } else {
+                        highlightSelection(selectedPlacedImage.mesh, true); // Re-apply standard highlight if no wireframe
+                    }
+                 }
+                updateUI(); // Update button text/state
+            }
+        }
+
+        function resetManipulationControls() {
+            scaleSlider.value = 1.0;
+            rotateSlider.value = 0;
+        }
+
+        // --- UI State Management ---
+        function updateUI() {
+            let instructionText = "";
+
+            // Hide all optional containers by default
+            manipulationContainer.style.display = 'none';
+            interactionContainer.style.display = 'none';
+
+            // Button Defaults
+            selectImageBtn.disabled = false;
+            placeImageBtn.disabled = true;
+            cancelPlacementBtn.disabled = true;
+
+            switch (currentState) {
+                case STATE.SCANNING:
+                    instructionText = placedImages.length === 0
+                        ? "Bir yüzey algılanmasını bekleyin veya Resim Seçin."
+                        : "Bir yüzey algılayın veya yerleştirilmiş resme dokunun.";
+                    reticle.material.color.set(0xff0000); // Red reticle = no surface
+                    break;
+
+                case STATE.PREVIEWING:
+                    instructionText = "Resmi konumlandırın, boyutlandırın ve 'Yerleştir'e dokunun.";
+                    reticle.material.color.set(0x00ff00); // Green reticle = surface ok
+                    placeImageBtn.disabled = !reticle.visible; // Enable only if reticle found surface
+                    cancelPlacementBtn.disabled = false;
+                    manipulationContainer.style.display = 'flex';
+                    selectImageBtn.disabled = true; // Don't allow selecting another while previewing
+                    break;
+
+                case STATE.PLACED_IDLE:
+                    instructionText = "Yeni resim seçin veya yerleştirilmiş resme dokunun.";
+                     reticle.material.color.set(0xff0000); // Hide/reset reticle color
+                    break;
+
+                case STATE.INTERACTING:
+                    if (selectedPlacedImage) {
+                        instructionText = selectedPlacedImage.locked ? "Resim Kilitli." : "Resmi düzenleyin, kilitleyin veya kaldırın.";
+                        interactionContainer.style.display = 'flex';
+                        removeBtn.disabled = selectedPlacedImage.locked; // Can't remove if locked? Or allow? Let's allow.
+                        editBtn.disabled = selectedPlacedImage.locked;
+                        lockBtn.textContent = selectedPlacedImage.locked ? "Kilidi Aç" : "Kilitle";
+                        lockBtn.classList.toggle('success', selectedPlacedImage.locked); // Green when locked? Or Warning?
+                        lockBtn.classList.toggle('warning', !selectedPlacedImage.locked);
+                         // Hide main controls maybe? Or keep select image active?
+                         // selectImageBtn.disabled = true;
+                    } else {
+                         // Should not happen in this state, revert
+                         currentState = STATE.PLACED_IDLE;
+                         updateUI(); // Re-run update
+                         return;
+                    }
+                    break;
+
+                 case STATE.MANIPULATING:
+                    if (selectedPlacedImage && !selectedPlacedImage.locked) {
+                        instructionText = "Resmi Boyutlandır / Döndür. Bitince boşluğa dokun.";
+                        manipulationContainer.style.display = 'flex';
+                        interactionContainer.style.display = 'none'; // Hide interaction buttons while manipulating
+                        // selectImageBtn.disabled = true;
+                    } else {
+                        // Should not happen in this state, revert
+                         currentState = selectedPlacedImage ? STATE.INTERACTING : STATE.PLACED_IDLE;
+                         updateUI(); // Re-run update
+                         return;
+                    }
+                    break;
+            }
+
+            instructionsElement.textContent = instructionText;
+        }
+
+
+        // --- Render Loop ---
+        function render(timestamp, frame) {
+            if (frame && currentSession) {
+                const referenceSpace = renderer.xr.getReferenceSpace(); // Get the correct space type
+
+                // --- Hit Testing and Reticle ---
+                if (hitTestSourceRequested && hitTestSource && referenceSpace) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                         const hitPose = hit.getPose(referenceSpace); // Get pose relative to our ref space
+
+                        if (hitPose) {
+                             reticle.visible = true;
+                             reticle.matrix.fromArray(hitPose.transform.matrix); // Position reticle using the matrix
+                             reticle.matrix.decompose(reticle.position, reticle.quaternion, reticle.scale); // Update position/rotation if needed elsewhere
+
+                            // Update Preview Image Position if previewing
+                             if (currentState === STATE.PREVIEWING && previewImage) {
+                                 previewImage.mesh.visible = true;
+                                 // Create combined matrix: hitPose * Rotation * Scale
+                                 const scaleMatrix = new THREE.Matrix4().makeScale(previewImage.currentScale, previewImage.currentScale, previewImage.currentScale);
+                                 const rotationMatrix = new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(previewImage.currentRotationY));
+                                 const hitMatrix = new THREE.Matrix4().fromArray(hitPose.transform.matrix);
+
+                                 previewImage.mesh.matrix.copy(hitMatrix).multiply(rotationMatrix).multiply(scaleMatrix);
+
+                             } else if (previewImage) {
+                                 previewImage.mesh.visible = false; // Hide preview if not previewing state
+                             }
+                         } else {
+                              reticle.visible = false;
+                              if (previewImage) previewImage.mesh.visible = false;
+                         }
+
+
+                    } else {
+                        reticle.visible = false;
+                        if (previewImage) previewImage.mesh.visible = false;
+                    }
+                    // Update UI based on reticle visibility if needed (e.g., enable/disable Place button)
+                    if (currentState === STATE.PREVIEWING) {
+                       placeImageBtn.disabled = !reticle.visible;
+                       if(!reticle.visible) instructionsElement.textContent = "Yerleştirmek için düz bir yüzey bulun...";
+                       else instructionsElement.textContent = "Resmi konumlandırın, boyutlandırın ve 'Yerleştir'e dokunun.";
+                    }
+
+                } else if(hitTestSourceRequested && !hitTestSource){
+                    // Still waiting for hit test source after session start
+                     console.log("Waiting for hit test source...");
+                 }
+
+
+                // --- Update Anchored Objects ---
+                 placedImages.forEach(imgData => {
+                     if (imgData.anchor) {
+                         const anchorPose = frame.getPose(imgData.anchor.anchorSpace, referenceSpace);
+                         if (anchorPose) {
+                             // Anchor is currently tracked
+                             imgData.mesh.visible = true;
+                             // Apply anchor pose first, then local scale/rotation
+                              imgData.mesh.matrix.fromArray(anchorPose.transform.matrix);
+
+                              // Decompose matrix to apply scale/rotation relative to the anchor pose
+                              imgData.mesh.matrix.decompose(imgData.mesh.position, imgData.mesh.quaternion, imgData.mesh.scale); // Get world pos/rot from matrix
+
+                              // Re-apply local scale and rotation *after* getting the anchor's pose
+                              imgData.mesh.scale.set(imgData.scale, imgData.scale, imgData.scale);
+                              // Combine anchor rotation with user rotation - Quaternion multiplication is better
+                              const userRotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, THREE.MathUtils.degToRad(imgData.rotationY), 0));
+                              imgData.mesh.quaternion.multiply(userRotation);
+
+                              // Update matrix from the modified position, quaternion, scale
+                              imgData.mesh.updateMatrix();
+
+
+                         } else {
+                             // Anchor lost tracking temporarily
+                             imgData.mesh.visible = false;
+                              console.log(`Anchor for image ${imgData.id} lost tracking.`);
+                         }
+                     } else {
+                         // Should not happen if anchor creation was successful
+                         console.warn(`Image ${imgData.id} has no anchor!`);
+                         imgData.mesh.visible = false; // Hide if no anchor
+                     }
+                 });
+
+            } else {
+                // No XR Frame (not in session or error)
+                reticle.visible = false;
+                if (previewImage) previewImage.mesh.visible = false;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+
+        // --- Start the application ---
+        // Check for WebXR support before calling init
+         if ('xr' in navigator) {
+             navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                 if (supported) {
+                     console.log("AR is supported. Initializing...");
+                     init();
+                     // Listen for session start/end at the renderer level
+                     renderer.xr.addEventListener('sessionstart', (event) => onSessionStarted(event.target.getSession()));
+                     // Session end is handled within onSessionStarted via listener
+                 } else {
+                     console.error("Immersive AR session not supported on this device/browser.");
+                     loadingScreen.innerHTML = '<p style="color: red;">Hata: Bu cihaz veya tarayıcı AR desteklemiyor. ARCore (Android) veya ARKit (iOS) uyumlu ve güncel bir tarayıcı (örn. Chrome) kullandığınızdan emin olun.</p>';
+                 }
+             }).catch((err) => {
+                 console.error("Error checking AR support:", err);
+                 loadingScreen.innerHTML = '<p style="color: red;">Hata: AR desteği kontrol edilirken bir sorun oluştu.</p>';
+             });
+         } else {
+             console.error("WebXR API not found in navigator.");
+             loadingScreen.innerHTML = '<p style="color: red;">Hata: WebXR API bulunamadı. Lütfen uyumlu bir tarayıcı kullanın.</p>';
+         }
+
+    </script>
+</body>
+</html>
