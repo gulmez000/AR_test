@@ -388,6 +388,10 @@
             // Düzlemi yatay hale getir
             imagePlane.rotation.x = -Math.PI / 2;
 
+            // İlk pozisyon ve rotasyonu sakla (isteğe bağlı)
+            imagePlane.initialPosition = new THREE.Vector3().copy(imagePlane.position);
+            imagePlane.initialRotation = new THREE.Euler().copy(imagePlane.rotation);
+
             scene.add(imagePlane);
 
             // UI güncellemeleri
@@ -406,7 +410,7 @@
         }
 
         function updateImageTransform() {
-            if (!imagePlane) return;
+            if (!imagePlane || isImageLocked) return; // Eğer resim yoksa veya kilitliyse çık
 
             // Mevcut pozisyon ve rotasyonu koru, sadece ölçeği ve Y ekseni rotasyonunu güncelle
             imagePlane.scale.set(currentScale, currentScale, currentScale);
@@ -445,25 +449,26 @@
             lockBtn.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
 
             adjustBtn.disabled = isImageLocked;
-            controls.style.display = 'none';
-            contextMenu.style.display = 'none';
+            controls.style.display = 'none'; // Kilitlendiğinde kontrolleri gizle
 
             instructionsElement.textContent = isImageLocked ?
                 'Resim kilitlendi. Kilidini açmak için resme tekrar tıklayın' :
                 'Resim kilidi açıldı. Boyutlandırma için "Boyut/Döndür" düğmesine tıklayın';
+
+            // Kilitlendiğinde veya açıldığında transform güncellemeyi tetiklemeyin
         }
 
         function onScreenTap(event) {
             if (!isImagePlaced || !imagePlane) return;
 
             // Ekrandaki dokunma noktasını normalize edilmiş koordinatlara dönüştür
-            const rect = renderer.domElement.getBoundingClientRect();
+            const             const rect = renderer.domElement.getBoundingClientRect();
             const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
             const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
             // Raycaster oluştur
             const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(new new THREE.Vector2(x, y), camera);
+            raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
 
             // Resim düzlemi ile kesişme kontrol et
             const intersects = raycaster.intersectObject(imagePlane);
