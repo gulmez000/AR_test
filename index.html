@@ -118,6 +118,8 @@
             z-index: 11;
             color: white;
             text-align: center;
+            flex-direction: column;
+            align-items: center;
         }
 
         #controls label {
@@ -125,36 +127,11 @@
             margin: 5px 0;
         }
 
-        #controls input {
+        #controls input[type="range"] {
             width: 200px;
         }
 
-        #adjust-controls {
-            display: none;
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 10px;
-            z-index: 11;
-            color: white;
-            text-align: center;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        #adjust-controls label {
-            display: block;
-            margin: 5px 0;
-        }
-
-        #adjust-controls input[type="range"] {
-            width: 200px;
-        }
-
-        #adjust-controls button {
+        #controls button {
             margin-top: 10px;
         }
     </style>
@@ -178,7 +155,7 @@
 
     <input type="file" id="image-input" accept="image/*">
 
-    <div id="adjust-controls">
+    <div id="controls">
         <label for="scale-slider">Boyut:</label>
         <input type="range" id="scale-slider" min="10" max="200" value="100">
 
@@ -229,7 +206,7 @@
         const loadingScreen = document.getElementById('loading-screen');
         const contextMenu = document.getElementById('contextMenu');
         const removeBtn = document.getElementById('remove-btn');
-        const adjustControls = document.getElementById('adjust-controls');
+        const adjustControls = document.getElementById('controls'); // ID düzeltildi
         const scaleSlider = document.getElementById('scale-slider');
         const rotateXSlider = document.getElementById('rotate-x-slider');
         const rotateYSlider = document.getElementById('rotate-y-slider');
@@ -453,7 +430,7 @@
 
             // Düzlemi yatay hale getir
             imagePlane.rotation.x = -Math.PI / 2;
-                        // İlk pozisyon ve rotasyonu sakla (isteğe bağlı)
+            // İlk pozisyon ve rotasyonu sakla (isteğe bağlı)
             imagePlane.initialPosition = new THREE.Vector3().copy(imagePlane.position);
             imagePlane.initialRotation = new THREE.Euler().copy(imagePlane.rotation);
 
@@ -583,11 +560,17 @@
                         reticle.visible = false;
                     }
                 }
-            }
 
-            renderer.render(scene, camera);
+                // Sadece resim yerleştirilmişse ve kilitliyse render et
+                if (imagePlane) {
+                    renderer.render(scene, camera);
+                }
+            } else {
+                renderer.render(scene, camera); // AR oturumu yoksa normal render
+            }
         }
     </script>
 </body>
 </html>
 
+            
