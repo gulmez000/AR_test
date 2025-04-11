@@ -206,7 +206,7 @@
         const loadingScreen = document.getElementById('loading-screen');
         const contextMenu = document.getElementById('contextMenu');
         const removeBtn = document.getElementById('remove-btn');
-        const adjustControls = document.getElementById('controls'); // ID düzeltildi
+        const adjustControls = document.getElementById('controls');
         const scaleSlider = document.getElementById('scale-slider');
         const rotateXSlider = document.getElementById('rotate-x-slider');
         const rotateYSlider = document.getElementById('rotate-y-slider');
@@ -452,7 +452,7 @@
             opacitySlider.value = 100;
             currentScale = 1.0;
             currentRotationX = 0;
-            currentRotationY = 0;
+                        currentRotationY = 0;
             currentRotationZ = 0;
             currentOpacity = 1.0;
         }
@@ -491,6 +491,13 @@
         function toggleLock() {
             isImageLocked = !isImageLocked;
             lockBtnAdjust.textContent = isImageLocked ? 'Kilidi Aç' : 'Kilitle';
+
+            adjustBtn.disabled = isImageLocked;
+            adjustControls.style.display = isImageLocked ? 'none' : 'flex';
+
+            if (imagePlane) {
+                imagePlane.matrixAutoUpdate = !isImageLocked; // Kilitliyse otomatik güncellemeyi kapat
+            }
 
             instructionsElement.textContent = isImageLocked ?
                 'Resim kilitlendi. Kilidini açmak için "Kilitle" düğmesine tekrar tıklayın' :
@@ -561,10 +568,7 @@
                     }
                 }
 
-                // Sadece resim yerleştirilmişse ve kilitliyse render et
-                if (imagePlane) {
-                    renderer.render(scene, camera);
-                }
+                renderer.render(scene, camera);
             } else {
                 renderer.render(scene, camera); // AR oturumu yoksa normal render
             }
@@ -573,4 +577,3 @@
 </body>
 </html>
 
-            
