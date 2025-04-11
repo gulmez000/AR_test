@@ -281,11 +281,11 @@
 <body>
   <h1></h1>
 
-  <div id="current-radio-container" style="display: none;">
+  <div id="current-radio-container">
     <img id="current-radio-logo" src="" alt="">
     <div id="current-radio-info">
       <p id="current-radio-name"></p>
-      <p id="current-radio-status">Çalınıyor...</p>
+      <p id="current-radio-status"></p>
     </div>
     <div id="equalizer-container">
       <div class="eq-bar"></div>
@@ -383,6 +383,7 @@
       currentRadioName.textContent = radio.name;
       currentRadioLogo.src = radio.logo;
       currentRadioContainer.style.display = "flex";
+      currentRadioStatus.textContent = "Yükleniyor...";
       body.classList.remove('playing');
 
       if (window.hls) {
@@ -401,7 +402,7 @@
             currentRadioStatus.textContent = "Çalınıyor";
             body.classList.add('playing');
           }).catch(() => {
-            statusDisplay.textContent: `${radio.name} - Oynatma hatası!`;
+            statusDisplay.textContent = `${radio.name} - Oynatma hatası!`;
             currentRadioStatus.textContent = "Oynatma hatası!";
             body.classList.remove('playing');
           });
@@ -457,7 +458,7 @@
       updateRadioList(searchInput.value);
     });
 
-    updateRadioList();
+    updateRadioList(); // Sayfa ilk yüklendiğinde listeyi göster
 
     player.addEventListener('play', () => {
       body.classList.add('playing');
