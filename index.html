@@ -22,27 +22,89 @@
       color: #eee;
     }
 
+    #current-radio-container {
+      background: #2c2c2c; /* Daha koyu gri */
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #play-stop-button {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.2s ease;
+      margin-right: 1rem;
+    }
+
+    #play-stop-button:hover {
+      background: #d32f2f;
+    }
+
+    .playing #play-stop-button {
+      background: #555;
+    }
+
+    .playing #play-stop-button:hover {
+      background: #777;
+    }
+
+    #current-radio-logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    #current-radio-info {
+      flex-grow: 1;
+      text-align: center;
+      margin-left: 1rem;
+      margin-right: 1rem;
+    }
+
+    #current-radio-name {
+      font-size: 1.2rem;
+      color: #eee;
+      margin-bottom: 0.2rem;
+    }
+
+    #current-radio-status {
+      font-size: 0.9rem;
+      color: #bbb;
+    }
+
     #volume-control-container {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
-      margin-bottom: 1rem;
+      margin-left: 1rem;
     }
 
     #volume-label {
-      margin-right: 0.5rem;
-      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
       color: #eee;
+      transform: rotate(-90deg);
     }
 
     #volume-slider {
-      width: 150px;
+      width: 80px;
       height: 8px;
       -webkit-appearance: none;
       appearance: none;
       background: #555;
       border-radius: 4px;
       cursor: pointer;
+      transform: rotate(-90deg);
     }
 
     #volume-slider::-webkit-slider-thumb {
@@ -64,64 +126,58 @@
       border: none;
     }
 
-    #current-radio-container {
-      background: #2c2c2c; /* Daha koyu gri */
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      margin-bottom: 1rem;
+    #equalizer-container {
       display: flex;
-      flex-direction: column;
-      align-items: center;
       justify-content: center;
-    }
-
-    #current-radio-info {
-      text-align: center;
+      align-items: center;
+      gap: 8px;
       margin-top: 0.5rem;
-      margin-bottom: 0.5rem; /* Ekolayzır için boşluk */
+      opacity: 0.7;
+      transition: opacity 0.2s ease-in-out;
+      order: 1; /* Ekolayzırı en alta taşı */
+      width: 100%; /* Ekolayzırın tam genişlikte olmasını sağla */
     }
 
-    #current-radio-logo {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      border-radius: 8px;
+    .playing #equalizer-container {
+      opacity: 1;
     }
 
-    #current-radio-name {
-      font-size: 1.2rem;
-      color: #eee;
-      margin-bottom: 0.2rem;
+    .eq-bar {
+      width: 6px;
+      height: 20px;
+      background-color: #f44336;
+      border-radius: 3px;
+      transform-origin: bottom;
+      animation: eq-animate 1s infinite alternate;
     }
 
-    #current-radio-status {
-      font-size: 0.9rem;
-      color: #bbb;
+    .eq-bar:nth-child(1) {
+      animation-delay: 0.1s;
     }
 
-    #play-stop-button {
-      background: #f44336;
-      color: white;
-      border: none;
-      padding: 0.7rem 1.5rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: background-color 0.2s ease;
-      margin-top: 0.5rem;
+    .eq-bar:nth-child(2) {
+      animation-delay: 0.3s;
     }
 
-    #play-stop-button:hover {
-      background: #d32f2f;
+    .eq-bar:nth-child(3) {
+      animation-delay: 0.5s;
     }
 
-    .playing #play-stop-button {
-      background: #555;
+    .eq-bar:nth-child(4) {
+      animation-delay: 0.2s;
     }
 
-    .playing #play-stop-button:hover {
-      background: #777;
+    .eq-bar:nth-child(5) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes eq-animate {
+      0% {
+        transform: scaleY(0.4);
+      }
+      100% {
+        transform: scaleY(1.2);
+      }
     }
 
     #search-container {
@@ -225,6 +281,7 @@
     audio {
       width: 100%;
       margin-top: 1rem;
+      display: none; /* Audio kontrolümüzü gizliyoruz */
     }
 
     #filterButtons {
@@ -247,58 +304,6 @@
       background: #f44336;
     }
 
-    #equalizer-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      margin-top: 0.5rem;
-      opacity: 0.7;
-      transition: opacity 0.2s ease-in-out;
-    }
-
-    .playing #equalizer-container {
-      opacity: 1;
-    }
-
-    .eq-bar {
-      width: 6px;
-      height: 20px;
-      background-color: #f44336;
-      border-radius: 3px;
-      transform-origin: bottom;
-      animation: eq-animate 1s infinite alternate;
-    }
-
-    .eq-bar:nth-child(1) {
-      animation-delay: 0.1s;
-    }
-
-    .eq-bar:nth-child(2) {
-      animation-delay: 0.3s;
-    }
-
-    .eq-bar:nth-child(3) {
-      animation-delay: 0.5s;
-    }
-
-    .eq-bar:nth-child(4) {
-      animation-delay: 0.2s;
-    }
-
-    .eq-bar:nth-child(5) {
-      animation-delay: 0.4s;
-    }
-
-    @keyframes eq-animate {
-      0% {
-        transform: scaleY(0.4);
-      }
-      100% {
-        transform: scaleY(1.2);
-      }
-    }
-
     /* Responsive Tasarım */
     @media (max-width: 768px) {
       #current-radio-container {
@@ -307,15 +312,36 @@
         text-align: center;
       }
 
-      #current-radio-info {
+      #play-stop-button {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+      }
+
+      #volume-control-container {
         margin-left: 0;
-        text-align: center;
+        flex-direction: row;
         margin-top: 0.5rem;
       }
 
+      #volume-label {
+        transform: rotate(0);
+        margin-right: 0.5rem;
+        margin-bottom: 0;
+      }
+
+      #volume-slider {
+        transform: rotate(0);
+        width: 100px;
+        height: 8px;
+      }
+
+      #current-radio-info {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
       #current-radio-logo {
-        width: 60px;
-        height: 60px;
+        margin-bottom: 0.5rem;
       }
 
       #search-container {
@@ -344,6 +370,11 @@
         top: 2px;
         left: 2px;
       }
+
+      #equalizer-container {
+        order: 2; /* Ekolayzırı alta taşı */
+        margin-top: 1rem;
+      }
     }
 
     @media (max-width: 480px) {
@@ -357,16 +388,16 @@
 <body>
   <h1></h1>
 
-  <div id="volume-control-container">
-    <label id="volume-label" for="volume-slider">Ses:</label>
-    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
-  </div>
-
   <div id="current-radio-container">
+    <button id="play-stop-button">Durdur</button>
     <img id="current-radio-logo" src="" alt="">
     <div id="current-radio-info">
       <p id="current-radio-name"></p>
       <p id="current-radio-status"></p>
+    </div>
+    <div id="volume-control-container">
+      <label id="volume-label" for="volume-slider">Ses</label>
+      <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
     </div>
     <div id="equalizer-container">
       <div class="eq-bar"></div>
@@ -375,7 +406,6 @@
       <div class="eq-bar"></div>
       <div class="eq-bar"></div>
     </div>
-    <button id="play-stop-button">Durdur</button>
   </div>
 
   <div id="filterButtons">
@@ -389,7 +419,7 @@
   </div>
 
   <div class="radio-list" id="radioList"></div>
-  <audio id="player" controls style="display: none;"></audio> <div id="status">Bir radyo seçin</div>
+  <audio id="player"></audio> <div id="status">Bir radyo seçin</div>
 
   <script>
     const radios = [
@@ -416,14 +446,15 @@
     const showFavBtn = document.getElementById("showFavorites");
     const body = document.body;
     const currentRadioContainer = document.getElementById("current-radio-container");
+    const playStopButton = document.getElementById("play-stop-button");
     const currentRadioLogo = document.getElementById("current-radio-logo");
     const currentRadioName = document.getElementById("current-radio-name");
     const currentRadioStatus = document.getElementById("current-radio-status");
+    const volumeControlContainer = document.getElementById("volume-control-container");
+    const volumeSlider = document.getElementById("volume-slider");
+    const equalizerContainer = document.getElementById("equalizer-container");
     const searchInput = document.getElementById("search-input");
     const searchButton = document.getElementById("search-button");
-    const equalizerContainer = document.getElementById("equalizer-container");
-    const volumeSlider = document.getElementById("volume-slider");
-    const playStopButton = document.getElementById("play-stop-button");
 
     let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
     let showFavoritesOnly = false;
