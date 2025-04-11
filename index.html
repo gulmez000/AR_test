@@ -427,10 +427,10 @@
             matrix.decompose(position, rotation, scale);
 
             imagePlane.position.copy(position);
+            imagePlane.rotation.copy(new THREE.Euler().setFromRotationMatrix(matrix));
+            imagePlane.rotation.x = -Math.PI / 2; // Başlangıçta yere paralel yap
 
-            // Düzlemi yatay hale getir
-            imagePlane.rotation.x = -Math.PI / 2;
-            // İlk pozisyon ve rotasyonu sakla (isteğe bağlı)
+            // İlk pozisyon ve rotasyonu kaydet
             imagePlane.initialPosition = new THREE.Vector3().copy(imagePlane.position);
             imagePlane.initialRotation = new THREE.Euler().copy(imagePlane.rotation);
 
@@ -452,7 +452,7 @@
             opacitySlider.value = 100;
             currentScale = 1.0;
             currentRotationX = 0;
-                        currentRotationY = 0;
+            currentRotationY = 0;
             currentRotationZ = 0;
             currentOpacity = 1.0;
         }
@@ -565,6 +565,16 @@
                         }
                     } else {
                         reticle.visible = false;
+                    }
+                }
+
+                if (imagePlane && isImageLocked) {
+                    // Kilitliyse, kaydedilen ilk pozisyon ve rotasyonu sürekli uygula
+                    if (imagePlane.initialPosition && imagePlane.initialRotation) {
+                        imagePlane.position.copy(imagePlane.initialPosition);
+                        imagePlane.rotation.copy(imagePlane.initialRotation);
+                        imagePlane.matrixAutoUpdate = false; // Otomatik güncellemeyi kapalı tut
+                        imagePlane.updateMatrix(); // Matrisi güncelle
                     }
                 }
 
